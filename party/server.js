@@ -22,10 +22,16 @@ export default class MobeeServer {
         deck: generateDeck(),
         status: "waiting",
         scores: {},
+        avatars: {},
         currentAnswer: null,
         gameStartTime: null
       };
       await this.party.storage.put("gamestate", state);
+    }
+
+    // Initialize avatars object if it doesn't exist (for backwards compatibility)
+    if (!state.avatars) {
+      state.avatars = {};
     }
 
     if (!state.scores[playerId]) {
@@ -33,7 +39,11 @@ export default class MobeeServer {
       await this.party.storage.put("gamestate", state);
     }
 
-    conn.send(JSON.stringify({ type: "UPDATE_SCORES", scores: state.scores }));
+    conn.send(JSON.stringify({
+      type: "UPDATE_SCORES",
+      scores: state.scores,
+      avatars: state.avatars
+    }));
   }
 
   async onMessage(message, sender) {
@@ -78,7 +88,8 @@ export default class MobeeServer {
         type: "NEW_ROUND",
         cards: [shuffleArray(c1), shuffleArray(c2), shuffleArray(c3)],
         gameStartTime: state.gameStartTime,
-        scores: state.scores
+        scores: state.scores,
+        avatars: state.avatars
       }));
 
       await this.party.storage.put("gamestate", state);
@@ -94,7 +105,8 @@ export default class MobeeServer {
 
       this.party.broadcast(JSON.stringify({
         type: "GAME_RESET",
-        scores: state.scores
+        scores: state.scores,
+        avatars: state.avatars
       }));
 
       await this.party.storage.put("gamestate", state);
@@ -114,7 +126,8 @@ export default class MobeeServer {
         this.party.broadcast(JSON.stringify({
           type: "WINNER",
           winnerId: guesser,
-          scores: state.scores
+          scores: state.scores,
+          avatars: state.avatars
         }));
 
         await this.party.storage.put("gamestate", state);
@@ -139,7 +152,8 @@ export default class MobeeServer {
             type: "NEW_ROUND",
             cards: [shuffleArray(c1), shuffleArray(c2), shuffleArray(c3)],
             gameStartTime: currentState.gameStartTime,
-            scores: currentState.scores
+            scores: currentState.scores,
+            avatars: currentState.avatars
           }));
 
           await this.party.storage.put("gamestate", currentState);
@@ -161,7 +175,8 @@ export default class MobeeServer {
         this.party.broadcast(JSON.stringify({
           type: "WRONG_GUESS",
           guesserId: guesser,
-          scores: state.scores
+          scores: state.scores,
+          avatars: state.avatars
         }));
 
         await this.party.storage.put("gamestate", state);
@@ -186,7 +201,8 @@ export default class MobeeServer {
             type: "NEW_ROUND",
             cards: [shuffleArray(c1), shuffleArray(c2), shuffleArray(c3)],
             gameStartTime: currentState.gameStartTime,
-            scores: currentState.scores
+            scores: currentState.scores,
+            avatars: currentState.avatars
           }));
 
           await this.party.storage.put("gamestate", currentState);
@@ -197,8 +213,23 @@ export default class MobeeServer {
     if (data.type === "GET_SCORES") {
       sender.send(JSON.stringify({
         type: "UPDATE_SCORES",
-        scores: state.scores
+        scores: state.scores,
+        avatars: state.avatars
       }));
+    }
+
+    if (data.type === "UPDATE_AVATAR") {
+      const playerId = sender.playerId;
+      state.avatars[playerId] = data.avatar;
+
+      // Broadcast updated avatars to all players
+      this.party.broadcast(JSON.stringify({
+        type: "UPDATE_SCORES",
+        scores: state.scores,
+        avatars: state.avatars
+      }));
+
+      await this.party.storage.put("gamestate", state);
     }
   }
 }
