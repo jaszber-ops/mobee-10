@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Møbee Multi - The Battle</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* (KEEPING YOUR EXISTING STYLES EXACTLY THE SAME) */
+        :root {
+            --bg-color: #f0f4f8;
+            --accent: #4a90e2;
+            --text: #333;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --card-border-color: #f7f9d2;
+            --card-border-width: 10px;
+            --hex-height: 50%;
+            --hex-width: 43.33%;
+            --spread-radius: 25.83%; 
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            height: -webkit-fill-available;
+            margin: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            z-index: 10;
+            margin-top: 10px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .logo-container {
+            display: flex; 
+            justify-content: center; 
+            margin-bottom: 5px;
+            padding: 0 20px;
+        }
+
+        .logo-img {
+            max-width: 80vw; 
+            height: auto; 
+            max-height: 12vh;
+            width: 400px;
+            object-fit: contain;
+        }
+
+        .stats {
+            font-size: 1.4rem;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        #board-container {
+            flex-grow: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+            position: relative;
+        }
+
+        #game-board {
+            position: relative;
+            width: 95vmin;
+            height: 95vmin;
+            max-width: 600px;
+            max-height: 600px;
+            transform-origin: center center;
+            transform: translateZ(0);
+            z-index: 30;
+        }
+
+        .card {
+            position: absolute;
+            width: var(--hex-width);
+            height: var(--hex-height);
+            background: transparent;
+            transform: translate(-50%, -50%);
+            transform-origin: center center;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+            -webkit-backface-visibility: hidden;
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            bottom: 3%; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10%; 
+            aspect-ratio: 1 / 1;
+            background-image: url('assets/mobee_grey.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            filter: grayscale(100%) opacity(0.5);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .card-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: visible;
+        }
+
+        .card-shape {
+            fill: #ffffff;
+            stroke: var(--card-border-color);
+            stroke-width: var(--card-border-width);
+            stroke-linejoin: round;
+            transition: stroke 0.3s, fill 0.3s;
+        }
+
+        .card:nth-child(1) { top: calc(50% - var(--spread-radius)); left: 50%; }
+        .card:nth-child(2) { top: calc(50% + (var(--spread-radius) * 0.5)); left: calc(50% + (var(--spread-radius) * 0.866)); }
+        .card:nth-child(3) { top: calc(50% + (var(--spread-radius) * 0.5)); left: calc(50% - (var(--spread-radius) * 0.866)); }
+
+        .card:hover { 
+            z-index: 10;
+            transform: translate(-50%, -50%) scale(1.05);
+            filter: drop-shadow(0 0 10px rgba(74, 144, 226, 0.5));
+        }
+
+        .card.correct { z-index: 15; animation: pulse 0.5s; filter: drop-shadow(0 0 15px var(--success)); }
+        .card.correct .card-shape { stroke: var(--success); fill: #eafaf1; }
+        .card.wrong { z-index: 15; animation: shake 0.4s; filter: drop-shadow(0 0 15px var(--error)); }
+        .card.wrong .card-shape { stroke: var(--error); fill: #fcebe9; }
+
+        .symbol-container {
+            position: absolute;
+            width: 25%;
+            aspect-ratio: 1 / 1;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        
+        .symbol-container img {
+            transition: transform 0.2s;
+            mix-blend-mode: multiply;
+        }
+
+        .symbol-container:hover { z-index: 20; }
+        .symbol-container:hover img { transform: scale(1.3); }
+
+        .pos-0 { top: 50%; left: 50%; }
+        .pos-1 { top: 20%; left: 50%; }
+        .pos-2 { top: 35%; left: 78%; }
+        .pos-3 { top: 65%; left: 78%; }
+        .pos-4 { top: 80%; left: 50%; }
+        .pos-5 { top: 65%; left: 22%; }
+        .pos-6 { top: 35%; left: 22%; }
+
+        #message {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.98);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: block; /* Visible by default for lobby */
+            z-index: 100;
+            border: 4px solid #BEC887;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        button {
+            background: #BEC887;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            margin: 20px auto 0 auto;
+            font-weight: 600;
+            display: block;
+        }
+        button:active { transform: scale(0.95); }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.08); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes shake {
+            0% { margin-left: 0; }
+            25% { margin-left: -5px; }
+            50% { margin-left: 5px; }
+            75% { margin-left: -5px; }
+            100% { margin-left: 0; }
+        }
+        @keyframes countdownPulse {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.9; }
+        }
+        .countdown-number {
+            animation: countdownPulse 1s ease-out;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #BEC887;
+        }
+
+        @keyframes timerPause {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1.1); }
+        }
+        @keyframes timerResume {
+            0% { transform: scale(1.1); }
+            50% { transform: scale(1.15); color: #2ecc71; }
+            100% { transform: scale(1); color: inherit; }
+        }
+        .timer-display {
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+        .timer-display.paused {
+            animation: timerPause 0.3s ease forwards;
+        }
+        .timer-display.resumed {
+            animation: timerResume 0.3s ease forwards;
+        }
+
+        .footer-link {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            z-index: 15;
+        }
+
+        .footer-link a {
+            color: #4a90e2;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .footer-link a:hover {
+            color: #BEC887;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            z-index: 200;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 90%;
+            width: 350px;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            margin: 0;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .modal-content h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .modal-content img {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .buy-btn {
+            background: #4a90e2;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            display: block;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .buy-btn:hover {
+            background: #357abd;
+        }
+
+        .stay-btn {
+            background: transparent;
+            border: 1px solid #ddd;
+            color: #666;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-container">
+        <img src="assets/mobee_logo.png" class="logo-img">
+    </div>
+    <div class="stats">
+        <span id="score-el">Waiting for players...</span>
+    </div>
+</header>
+
+<div id="board-container">
+    <div id="game-board"></div>
+</div>
+
+<div id="message">
+    <h2 id="msg-title">Møbee Multiplayer</h2>
+    <p id="msg-body">Join the room to battle!</p>
+    <button onclick="requestStartGame()">Start Round</button>
+</div>
+
+<div class="footer-link">
+    <a href="#" onclick="openShopModal(); return false;">
+        https://mobeecards.store ↗
+    </a>
+</div>
+
+<div id="room-modal" class="modal-overlay">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h2>Join or Create Room</h2>
+        <p>Enter a room code to join friends, or create your own room</p>
+
+        <input type="text" id="room-code-input-modal" placeholder="Enter room code (optional)"
+               style="width: 100%; padding: 12px; border: 2px solid #BEC887; border-radius: 10px; font-size: 1rem; margin: 20px 0; text-align: center; text-transform: uppercase;">
+
+        <div class="modal-actions">
+            <button class="buy-btn" id="join-room-btn">
+                Continue
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="shop-modal" class="modal-overlay" onclick="closeShopModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="close-btn" onclick="closeShopModal()">×</button>
+
+        <h2>Love the game?</h2>
+        <p>Get the real Møbee cards and play with friends!</p>
+
+        <img src="assets/mobee_kartya_card_2024_1.jpg" alt="Mobee Physical Cards">
+
+        <div class="modal-actions">
+            <a href="https://mobeecards.store/?ref=game" target="_blank" class="buy-btn">
+                Buy a Møbee!
+            </a>
+            <button class="stay-btn" onclick="closeShopModal()">
+                Keep Playing
+            </button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // --- 1. IMPORT PARTYSOCKET ---
+    import PartySocket from "https://cdn.jsdelivr.net/npm/partysocket@1.0.0/+esm";
+
+    // --- 2. CONFIGURATION ---
+    // The visual assets. Order must match server IDs (0-13)
+    const SYMBOLS = [
+        { id: 0,  name: 'Helicopter', img: 'assets/symbols/helicopter.png' },
+        { id: 1,  name: 'UFO',        img: 'assets/symbols/ufo.png' },
+        { id: 2,  name: 'Shark',      img: 'assets/symbols/shark.png' },
+        { id: 3,  name: 'Pig',        img: 'assets/symbols/pig.png' },
+        { id: 4,  name: 'Rhino',      img: 'assets/symbols/rhino.png' },
+        { id: 5,  name: 'Pretzel',    img: 'assets/symbols/pretzel.png' },
+        { id: 6,  name: 'Shoe',       img: 'assets/symbols/shoe.png' },
+        { id: 7,  name: 'Sunglasses', img: 'assets/symbols/sunglasses.png' },
+        { id: 8,  name: 'Star',       img: 'assets/symbols/star.png' },
+        { id: 9,  name: 'Elephant',   img: 'assets/symbols/elephant.png' },
+        { id: 10, name: 'Lion',       img: 'assets/symbols/lion.png' },
+        { id: 11, name: 'Sailboat',   img: 'assets/symbols/sailboat.png' },
+        { id: 12, name: 'Cat',        img: 'assets/symbols/cat.png' },
+        { id: 13, name: 'Dog',        img: 'assets/symbols/dog.png' }
+    ];
+
+// --- 3. PARTYKIT CONNECTION ---
+    // Persistent Player ID (survives page reload)
+    // Generate short 4-character uppercase alphanumeric code
+    let playerId = localStorage.getItem('mobee_player_id');
+    if (!playerId) {
+        // Generate alphanumeric code with better letter distribution
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars like I, 1, O, 0
+        playerId = '';
+        for (let i = 0; i < 4; i++) {
+            playerId += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        localStorage.setItem('mobee_player_id', playerId);
+    }
+
+    // PartyKit deployed host
+    const PARTYKIT_HOST = "mobee-multi.jaszber-ops.partykit.dev";
+
+    // Room Code System - default to creating your own room
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomCode = urlParams.get('room');
+    let conn = null;
+
+    // Function to show room selection modal and initialize connection
+    function showRoomSelectionModal() {
+        const modal = document.getElementById('room-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 10);
+
+        // Attach event listeners
+        const joinBtn = document.getElementById('join-room-btn');
+        const inputField = document.getElementById('room-code-input-modal');
+
+        joinBtn.onclick = joinOrCreateRoom;
+
+        // Allow pressing Enter to continue
+        inputField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                joinOrCreateRoom();
+            }
+        });
+    }
+
+    function joinOrCreateRoom() {
+        const input = document.getElementById('room-code-input-modal').value.trim().toUpperCase();
+        roomCode = input || playerId; // Use input or create new room with playerId
+
+        const modal = document.getElementById('room-modal');
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+
+        // Initialize connection now that we have a room code
+        initializeConnection();
+    }
+
+    function initializeConnection() {
+        conn = new PartySocket({
+            host: PARTYKIT_HOST,
+            room: roomCode,
+            query: { playerId }
+        });
+
+        setupConnectionHandlers();
+    }
+
+    // Show room selection modal if no room in URL
+    if (!roomCode) {
+        showRoomSelectionModal();
+    } else {
+        initializeConnection();
+    }
+
+    // Make requestStartGame global and available before connection
+    window.requestStartGame = function() {
+        if (conn) {
+            conn.send(JSON.stringify({ type: "START_GAME" }));
+        }
+    }
+
+    function setupConnectionHandlers() {
+
+    // Connection Feedback & Room Sharing
+    conn.addEventListener("open", () => {
+        console.log("Connected to room:", roomCode);
+
+        // Show room code and shareable link
+        const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+        const msgBody = document.getElementById('msg-body');
+
+        msgBody.innerHTML = `
+            <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">The fastest player wins the round!</p>
+            <div style="margin-bottom: 15px;">
+                <strong>Room Code:</strong><br>
+                <input type="text" id="room-code-input" value="${roomCode}" readonly
+                       style="width: 100%; padding: 8px; margin-top: 5px; border: 2px solid #BEC887; border-radius: 5px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center;">
+                <small id="code-copy-hint" style="color: #666;">Click to copy code</small>
+            </div>
+            <div>
+                <input type="text" id="share-url-input" value="${shareUrl}" readonly
+                       style="width: 100%; padding: 8px; margin-top: 5px; border: 2px solid #BEC887; border-radius: 5px; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+                <small id="url-copy-hint" style="color: #666;">Click to copy link</small>
+            </div>
+        `;
+
+        // Copy functionality for room code
+        const codeInput = document.getElementById('room-code-input');
+        const codeHint = document.getElementById('code-copy-hint');
+
+        codeInput.addEventListener('mouseover', () => {
+            codeInput.style.borderColor = '#4a90e2';
+            codeInput.style.backgroundColor = '#f0f8ff';
+        });
+
+        codeInput.addEventListener('mouseout', () => {
+            codeInput.style.borderColor = '#BEC887';
+            codeInput.style.backgroundColor = 'white';
+        });
+
+        codeInput.addEventListener('click', () => {
+            codeInput.select();
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(roomCode).then(() => {
+                    codeHint.innerText = '✓ Copied!';
+                    codeHint.style.color = '#2ecc71';
+                    setTimeout(() => {
+                        codeHint.innerText = 'Click to copy code';
+                        codeHint.style.color = '#666';
+                    }, 2000);
+                });
+            }
+        });
+
+        // Copy functionality for full URL
+        const urlInput = document.getElementById('share-url-input');
+        const urlHint = document.getElementById('url-copy-hint');
+
+        urlInput.addEventListener('mouseover', () => {
+            urlInput.style.borderColor = '#4a90e2';
+            urlInput.style.backgroundColor = '#f0f8ff';
+        });
+
+        urlInput.addEventListener('mouseout', () => {
+            urlInput.style.borderColor = '#BEC887';
+            urlInput.style.backgroundColor = 'white';
+        });
+
+        urlInput.addEventListener('click', () => {
+            urlInput.select();
+            urlInput.setSelectionRange(0, 99999); // For mobile
+
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    urlHint.innerText = '✓ URL copied!';
+                    urlHint.style.color = '#2ecc71';
+                    setTimeout(() => {
+                        urlHint.innerText = 'Click to copy full URL';
+                        urlHint.style.color = '#666';
+                    }, 2000);
+                });
+            } else {
+                // Fallback for older browsers
+                document.execCommand('copy');
+                urlHint.innerText = '✓ URL copied!';
+                urlHint.style.color = '#2ecc71';
+                setTimeout(() => {
+                    urlHint.innerText = 'Click to copy full URL';
+                    urlHint.style.color = '#666';
+                }, 2000);
+            }
+        });
+    });
+
+    // UI Elements
+    const boardEl = document.getElementById('game-board');
+    const scoreEl = document.getElementById('score-el');
+    const msgEl = document.getElementById('message');
+    const msgTitle = document.getElementById('msg-title');
+    const msgBody = document.getElementById('msg-body');
+
+    // Game Timer
+    let gameStartTime = null;
+    let gameTimerInterval = null;
+    let pausedTime = 0; // Track time spent paused
+    let pauseStartTime = null;
+    const GAME_DURATION = 60; // seconds
+
+    function startGameTimer() {
+        // Don't set gameStartTime here - use server's time
+        if (!gameStartTime) {
+            console.warn("startGameTimer called but no gameStartTime set!");
+            return;
+        }
+
+        if (gameTimerInterval) clearInterval(gameTimerInterval);
+
+        gameTimerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - gameStartTime - pausedTime) / 1000);
+            const remaining = Math.max(0, GAME_DURATION - elapsed);
+
+            updateTimerDisplay(remaining);
+
+            if (remaining === 0) {
+                clearInterval(gameTimerInterval);
+                endGame();
+            }
+        }, 100); // Update every 100ms for smooth countdown
+    }
+
+    function pauseTimer() {
+        if (gameTimerInterval) {
+            clearInterval(gameTimerInterval);
+
+            // Calculate current elapsed time in seconds (rounded down)
+            const currentElapsed = Math.floor((Date.now() - gameStartTime - pausedTime) / 1000);
+
+            // Round UP to next full second (give player extra time)
+            // This means if we're at 5.9 seconds, we go back to 5.0 seconds (add 1 second of time)
+            const adjustedElapsed = currentElapsed; // Keep at current second, will increment on resume
+
+            // Adjust pausedTime to align to clean second boundary
+            pausedTime = Date.now() - gameStartTime - (adjustedElapsed * 1000);
+
+            pauseStartTime = Date.now();
+
+            // Add pause animation to timer display only
+            const timerDisplay = scoreEl.querySelector('.timer-display');
+            if (timerDisplay) {
+                timerDisplay.classList.remove('resumed');
+                timerDisplay.classList.add('paused');
+            }
+        }
+    }
+
+    function resumeTimer() {
+        if (pauseStartTime) {
+            // Add 1 second (1000ms) to give players a full second after resume
+            pausedTime += (Date.now() - pauseStartTime) + 1000;
+            pauseStartTime = null;
+            startGameTimer();
+
+            // Add resume animation to timer display only
+            const timerDisplay = scoreEl.querySelector('.timer-display');
+            if (timerDisplay) {
+                timerDisplay.classList.remove('paused');
+                timerDisplay.classList.add('resumed');
+
+                // Remove animation class after it completes
+                setTimeout(() => {
+                    timerDisplay.classList.remove('resumed');
+                }, 300);
+            }
+        }
+    }
+
+    function updateTimerDisplay(seconds) {
+        // Check if timer display span exists, if so just update it
+        const timerDisplay = scoreEl.querySelector('.timer-display');
+        if (timerDisplay) {
+            timerDisplay.textContent = `Time: ${seconds}s`;
+        }
+    }
+
+    function endGame() {
+        clearInterval(gameTimerInterval);
+
+        // Get current scores to determine winner
+        conn.addEventListener("message", (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "UPDATE_SCORES") {
+                showGameOverScreen(data.scores);
+            }
+        });
+
+        // Request current scores
+        conn.send(JSON.stringify({ type: "GET_SCORES" }));
+    }
+
+    function showGameOverScreen(scores) {
+        // Determine winner
+        const sortedPlayers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+        const topScore = sortedPlayers[0][1];
+        const myScore = scores[playerId] || 0;
+
+        // Check if it's a tie at the top
+        const topPlayers = sortedPlayers.filter(([id, score]) => score === topScore);
+        const isTie = topPlayers.length > 1;
+
+        // Show game over screen
+        msgTitle.innerText = "GAME OVER!";
+
+        if (isTie && myScore === topScore) {
+            // It's a tie and I'm part of it
+            msgBody.innerHTML = `<strong style="color: #4a90e2; font-size: 1.3rem;">🤝 It's a Tie!</strong><br>Final Score: ${myScore}`;
+        } else if (myScore === topScore) {
+            // I won outright
+            msgBody.innerHTML = `<strong style="color: #2ecc71; font-size: 1.3rem;">🎉 You Won!</strong><br>Final Score: ${myScore}`;
+        } else {
+            // I lost
+            msgBody.innerHTML = `<strong style="color: #e74c3c; font-size: 1.3rem;">You Lost</strong><br>Your Score: ${myScore}`;
+        }
+
+        msgEl.style.display = 'block';
+
+        const startBtn = msgEl.querySelector('button');
+        startBtn.innerText = "Play Again";
+        startBtn.style.display = 'block';
+        startBtn.onclick = () => {
+            // Reset scores and immediately start new game
+            conn.send(JSON.stringify({ type: "RESET_GAME" }));
+            // After a brief moment, start the first round
+            setTimeout(() => {
+                conn.send(JSON.stringify({ type: "START_GAME" }));
+            }, 100);
+        };
+    }
+
+    // --- 4. HANDLE SERVER EVENTS ---
+    conn.addEventListener("message", (event) => {
+        const data = JSON.parse(event.data);
+        console.log("Server Msg:", data);
+
+        switch (data.type) {
+            case "UPDATE_SCORES":
+                updateScoreboard(data.scores);
+                break;
+
+            case "NEW_ROUND":
+                // Server sent 3 cards (arrays of IDs). Hide modal, show board.
+                console.log("NEW_ROUND received:", {
+                    cards: data.cards,
+                    gameStartTime: data.gameStartTime,
+                    currentGameStartTime: gameStartTime
+                });
+                msgEl.style.display = 'none';
+                renderBoard(data.cards);
+
+                // Use server's game start time (all players synchronized)
+                // Always update if server sends a new timestamp
+                if (data.gameStartTime) {
+                    const isNewGame = !gameStartTime || data.gameStartTime !== gameStartTime;
+                    gameStartTime = data.gameStartTime;
+                    if (isNewGame) {
+                        // Clear old timer and start fresh
+                        if (gameTimerInterval) clearInterval(gameTimerInterval);
+                        pausedTime = 0;
+                        pauseStartTime = null;
+                        startGameTimer();
+                    }
+                }
+
+                // Update scores AFTER setting gameStartTime so timer appears
+                if (data.scores) {
+                    updateScoreboard(data.scores);
+                }
+                break;
+
+            case "GAME_RESET":
+                // Server reset the game for all players
+                gameStartTime = null;
+                pausedTime = 0;
+                pauseStartTime = null;
+                if (gameTimerInterval) {
+                    clearInterval(gameTimerInterval);
+                }
+                updateScoreboard(data.scores);
+                // Hide the message overlay - new game will start immediately
+                msgEl.style.display = 'none';
+                break;
+
+            case "WINNER":
+                handleWinner(data);
+                break;
+
+            case "WRONG_GUESS":
+                handleWrongGuess(data);
+                break;
+        }
+    });
+
+    // requestStartGame now defined globally above
+
+    // --- 5. RENDER THE BOARD (Server Driven) ---
+    // serverCards is: [[0,1,2,3,4,5,6], [0,7,8...], ...]
+    const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
+
+    function renderBoard(serverCards) {
+        console.log("renderBoard called with:", serverCards);
+        boardEl.innerHTML = '';
+
+        serverCards.forEach((cardSymbolIds) => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            
+            // Draw Hexagon Shape
+            const svgBg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svgBg.setAttribute("class", "card-bg");
+            svgBg.setAttribute("viewBox", "0 0 260 300");
+            svgBg.innerHTML = `<polygon class="card-shape" points="130,5 255,80 255,220 130,295 5,220 5,80" />`;
+            cardEl.appendChild(svgBg);
+
+            // Use server order exactly - no client-side shuffling
+            // Both players must see identical cards!
+            cardSymbolIds.forEach((symbolId, i) => {
+                const symbolObj = SYMBOLS.find(s => s.id === symbolId);
+                if (!symbolObj) return; // Safety check
+
+                const symContainer = document.createElement('div');
+                symContainer.className = `symbol-container pos-${i}`;
+                symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS[i]}deg)`;
+
+                // Pointer Events None on IMG ensures click hits the container
+                symContainer.innerHTML = `
+                    <img src="${symbolObj.img}" style="width:100%; height:100%; object-fit:contain; pointer-events: none;">
+                `;
+                
+                // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
+                symContainer.onpointerdown = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    // Visual feedback immediately
+                    const img = symContainer.querySelector('img');
+                    img.style.transform = 'scale(1.5)';
+                    setTimeout(() => img.style.transform = 'scale(1)', 200);
+
+                    // Send Guess (server will handle correct/wrong)
+                    conn.send(JSON.stringify({
+                        type: "GUESS",
+                        symbol: symbolId
+                    }));
+                };
+                
+                cardEl.appendChild(symContainer);
+            });
+
+            boardEl.appendChild(cardEl);
+        });
+    }
+
+    function handleWinner(data) {
+        // data.winnerId = playerId of the winner
+        // data.scores = updated scores
+
+        // Pause timer FIRST before updating scoreboard
+        pauseTimer();
+
+        updateScoreboard(data.scores);
+
+        const cards = document.querySelectorAll('.card');
+
+        if (data.winnerId === playerId) {
+            // I WON!
+            cards.forEach(c => c.classList.add('correct'));
+            msgTitle.innerText = "YOU WON!";
+            msgBody.innerText = "You are the fastest!";
+        } else {
+            // OPPONENT WON
+            cards.forEach(c => c.classList.add('wrong'));
+            msgTitle.innerText = "Too Slow!";
+            msgBody.innerText = "Opponent stole the point.";
+        }
+
+        // Show overlay
+        msgEl.style.display = 'block';
+        const startBtn = msgEl.querySelector('button');
+        startBtn.style.display = 'none'; // Hide start button during countdown
+
+        // Show winner message briefly, then start countdown
+        setTimeout(() => {
+            // Countdown from 3
+            let countdown = 3;
+            msgTitle.innerText = "Next Round";
+            msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+                } else {
+                    clearInterval(countdownInterval);
+                    // Resume timer after countdown
+                    if (gameStartTime) {
+                        resumeTimer();
+                    }
+                    // Server will auto-send next round - just wait for it
+                    msgBody.innerHTML = "Ready...";
+                }
+            }, 1000);
+        }, 1000); // Show winner message for 1 second first
+    }
+
+    function handleWrongGuess(data) {
+        // data.guesserId = playerId who guessed wrong
+        // data.scores = updated scores
+
+        // Pause timer FIRST before updating scoreboard
+        pauseTimer();
+
+        updateScoreboard(data.scores);
+
+        const cards = document.querySelectorAll('.card');
+
+        if (data.guesserId === playerId) {
+            // I guessed wrong!
+            cards.forEach(c => c.classList.add('wrong'));
+            msgTitle.innerText = "WRONG!";
+            msgBody.innerText = "Opponent wins the point!";
+        } else {
+            // Opponent guessed wrong - I win!
+            cards.forEach(c => c.classList.add('correct'));
+            msgTitle.innerText = "YOU WIN!";
+            msgBody.innerText = "Opponent guessed wrong!";
+        }
+
+        // Show overlay
+        msgEl.style.display = 'block';
+        const startBtn = msgEl.querySelector('button');
+        startBtn.style.display = 'none'; // Hide start button during countdown
+
+        // Show message briefly, then start countdown
+        setTimeout(() => {
+            // Countdown from 3
+            let countdown = 3;
+            msgTitle.innerText = "Next Round";
+            msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+                } else {
+                    clearInterval(countdownInterval);
+                    // Resume timer after countdown
+                    if (gameStartTime) {
+                        resumeTimer();
+                    }
+                    // Server will auto-send next round - just wait for it
+                    msgBody.innerHTML = "Ready...";
+                }
+            }, 1000);
+        }, 1000); // Show message for 1 second first
+    }
+
+    function updateScoreboard(scores) {
+        // scores is { "playerId_1": 5, "playerId_2": 3 }
+
+        // Convert to array and sort by score (highest first)
+        const sortedPlayers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+
+        // Assign ranks considering ties
+        let currentRank = 1;
+        let previousScore = null;
+
+        const scoreboardParts = sortedPlayers.map(([id, score], index) => {
+            // If score changed, update rank to current position
+            if (previousScore !== null && score < previousScore) {
+                currentRank = index + 1;
+            }
+            previousScore = score;
+
+            const medal = currentRank === 1 ? '🥇 ' : currentRank === 2 ? '🥈 ' : currentRank === 3 ? '🥉 ' : '';
+
+            if (id === playerId) {
+                return `${medal}You: ${score}`;
+            } else {
+                return `${medal}P${currentRank}: ${score}`;
+            }
+        });
+
+        const scoreText = scoreboardParts.join('  |  ');
+
+        // Add timer if game has started
+        if (gameStartTime) {
+            const elapsed = Math.floor((Date.now() - gameStartTime - pausedTime) / 1000);
+            const remaining = Math.max(0, GAME_DURATION - elapsed);
+            scoreEl.innerHTML = `${scoreText}  |  <span class="timer-display">Time: ${remaining}s</span>`;
+        } else {
+            scoreEl.innerText = scoreText;
+        }
+    }
+
+    } // End setupConnectionHandlers
+
+    // Shop modal functions
+    window.openShopModal = function() {
+        const modal = document.getElementById('shop-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 10);
+    }
+
+    window.closeShopModal = function() {
+        const modal = document.getElementById('shop-modal');
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+</script>
+</body>
+</html>
