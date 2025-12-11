@@ -715,6 +715,7 @@ function renderBoard(serverCards, isSpectator = false) {
 
 function handleWinner(data) {
     // data.winnerId = playerId of the winner
+    // data.winningSymbol = the correct symbol ID
     // data.scores = updated scores
 
     // Pause timer FIRST before updating scoreboard
@@ -725,6 +726,14 @@ function handleWinner(data) {
     const cards = document.querySelectorAll('.card');
 
     const winnerAvatar = getAvatarHTML(data.avatars[data.winnerId]);
+
+    // Animate the winning symbol on all cards for all players
+    if (data.winningSymbol !== undefined) {
+        document.querySelectorAll(`.symbol-container[data-symbol-id="${data.winningSymbol}"] > div`).forEach(sprite => {
+            sprite.classList.add('symbol-match');
+            setTimeout(() => sprite.classList.remove('symbol-match'), 500);
+        });
+    }
 
     // Check if single player mode (only 1 player)
     const playerCount = Object.keys(data.scores).length;
