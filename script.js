@@ -750,26 +750,19 @@ function handleWinner(data) {
         }, 10);
     } else {
         // Multiplayer mode - show winner message WITH countdown
-        // First highlight cards (correct for winner, wrong for losers)
-        if (data.winnerId === playerId) {
+        const isWinner = data.winnerId === playerId;
+
+        if (isWinner) {
             // I WON! - cards already have 'correct' class from click
             msgTitle.innerHTML = `${winnerAvatar} You Won!`;
         } else {
-            // OPPONENT WON - add correct class to show winning state, then wrong
-            cards.forEach(c => c.classList.add('correct'));
+            // OPPONENT WON - show red border immediately with symbol animation
+            cards.forEach(c => c.classList.add('wrong'));
             msgTitle.innerHTML = `You lost!`;
         }
 
         // Delay showing modal so players can see the symbol animation
         setTimeout(() => {
-            // Now show wrong state for losers
-            if (data.winnerId !== playerId) {
-                cards.forEach(c => {
-                    c.classList.remove('correct');
-                    c.classList.add('wrong');
-                });
-            }
-
             // Show overlay with countdown
             msgEl.style.display = 'block';
             const startBtn = msgEl.querySelector('button');
