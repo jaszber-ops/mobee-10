@@ -406,7 +406,7 @@ function showGameOverScreen(scores, avatars) {
             // I lost - same format as round loser
             const winnerId = sortedPlayers[0][0];
             const winnerAvatar = getAvatarHTML(avatars[winnerId]);
-            msgTitle.innerHTML = `You lost!<br>Winner: ${winnerAvatar}`;
+            msgTitle.innerHTML = `You lost!`;
             msgBody.innerHTML = `Your Score: ${myScore}`;
         }
     }
@@ -757,7 +757,7 @@ function handleWinner(data) {
         } else {
             // OPPONENT WON - add correct class to show winning state, then wrong
             cards.forEach(c => c.classList.add('correct'));
-            msgTitle.innerHTML = `You lost!<br>Winner: ${winnerAvatar}`;
+            msgTitle.innerHTML = `You lost!`;
         }
 
         // Delay showing modal so players can see the symbol animation
