@@ -750,38 +750,50 @@ function handleWinner(data) {
         }, 10);
     } else {
         // Multiplayer mode - show winner message WITH countdown
+        // First highlight cards (correct for winner, wrong for losers)
         if (data.winnerId === playerId) {
-            // I WON! - The clicked card already has 'correct' class
+            // I WON! - cards already have 'correct' class from click
             msgTitle.innerHTML = `${winnerAvatar} You Won!`;
         } else {
-            // OPPONENT WON - add wrong class to all cards
-            cards.forEach(c => c.classList.add('wrong'));
+            // OPPONENT WON - add correct class to show winning state, then wrong
+            cards.forEach(c => c.classList.add('correct'));
             msgTitle.innerHTML = `You lost!<br>Winner: ${winnerAvatar}`;
         }
 
-        // Multiplayer mode - show overlay with countdown
-        msgEl.style.display = 'block';
-        const startBtn = msgEl.querySelector('button');
-        startBtn.style.display = 'none'; // Hide start button during countdown
-
-        // Start countdown immediately with winner message still showing
-        let countdown = 3;
-        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (countdown > 0) {
-                msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-            } else {
-                clearInterval(countdownInterval);
-                // Resume timer after countdown
-                if (gameStartTime) {
-                    resumeTimer();
-                }
-                // Server will auto-send next round - just wait for it
-                msgBody.innerHTML = "Ready...";
+        // Delay showing modal so players can see the symbol animation
+        setTimeout(() => {
+            // Now show wrong state for losers
+            if (data.winnerId !== playerId) {
+                cards.forEach(c => {
+                    c.classList.remove('correct');
+                    c.classList.add('wrong');
+                });
             }
-        }, 1000);
+
+            // Show overlay with countdown
+            msgEl.style.display = 'block';
+            const startBtn = msgEl.querySelector('button');
+            startBtn.style.display = 'none'; // Hide start button during countdown
+
+            // Start countdown with winner message
+            let countdown = 3;
+            msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+                } else {
+                    clearInterval(countdownInterval);
+                    // Resume timer after countdown
+                    if (gameStartTime) {
+                        resumeTimer();
+                    }
+                    // Server will auto-send next round - just wait for it
+                    msgBody.innerHTML = "Ready...";
+                }
+            }, 1000);
+        }, 600); // Delay modal to show symbol animation first
     }
 }
 
