@@ -636,8 +636,8 @@ function renderBoard(serverCards, isSpectator = false) {
                     spriteElement.style.transform = 'scale(1.5)';
                     setTimeout(() => spriteElement.style.transform = '', 200);
 
-                    // Add green highlight to the clicked card
-                    cardEl.classList.add('correct');
+                    // Add green highlight to all cards
+                    document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
                     // Send Guess (server will handle correct/wrong)
                     console.log("Clicking symbol:", symbolId, "on card:", cardIndex);
