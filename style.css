@@ -506,12 +506,29 @@ button:active { transform: scale(0.95); }
     max-width: 400px;
 }
 
-/* Fix symbol size on mobile */
+/* Mobile layout fixes */
 @media (max-width: 700px) {
+    /* Fix symbol size on mobile */
     .symbol-container > div {
         transform: scale(0.65);
     }
 
+    /* Move cards up closer to timer, away from footer */
+    #board-container {
+        align-items: flex-start;
+        padding-top: 2vh;
+    }
+
+    /* Increase horizontal spread to fill screen width */
+    :root {
+        --spread-radius: 30%;
+    }
+
+    /* Make game board wider on mobile */
+    #game-board {
+        width: 100vw;
+        max-width: none;
+    }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
