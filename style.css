@@ -202,6 +202,10 @@ header {
     margin-top: 20px;
 }
 
+#message.lost {
+    border-color: #E6A07F;
+}
+
 button {
     background: #BEC887;
     color: white;

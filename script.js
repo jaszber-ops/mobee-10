@@ -184,6 +184,7 @@ function createConnection() {
         }
         msgTitle.innerText = "Connection Error";
         msgBody.innerHTML = "Lost connection to server. Attempting to reconnect...";
+        msgEl.classList.remove('lost');
         msgEl.style.display = 'block';
     });
 
@@ -252,6 +253,7 @@ conn.addEventListener("open", () => {
     `;
 
     // Show the message element
+    msgEl.classList.remove('lost');
     msgEl.style.display = 'block';
 });
 
@@ -384,6 +386,7 @@ function showGameOverScreen(scores, avatars) {
     const isSinglePlayer = playerCount === 1;
 
     // Show game over screen
+    msgEl.classList.remove('lost'); // Reset border color by default
     if (isSinglePlayer) {
         // Single player mode - just show matches found
         msgTitle.innerText = "Time's up!";
@@ -408,6 +411,7 @@ function showGameOverScreen(scores, avatars) {
             const winnerAvatar = getAvatarHTML(avatars[winnerId]);
             msgTitle.innerHTML = `You lost!`;
             msgBody.innerHTML = `Your Score: ${myScore}`;
+            msgEl.classList.add('lost');
         }
     }
 
@@ -519,6 +523,7 @@ conn.addEventListener("message", (event) => {
             // Show spectator message
             msgTitle.innerText = "Spectating";
             msgBody.innerHTML = `<p>You joined mid-game!<br>You'll play in the next round.</p>`;
+            msgEl.classList.remove('lost');
             msgEl.style.display = 'block';
 
             // Start timer sync if game is running
@@ -755,10 +760,12 @@ function handleWinner(data) {
         if (isWinner) {
             // I WON! - cards already have 'correct' class from click
             msgTitle.innerHTML = `${winnerAvatar} You Won!`;
+            msgEl.classList.remove('lost');
         } else {
             // OPPONENT WON - show red border immediately with symbol animation
             cards.forEach(c => c.classList.add('wrong'));
             msgTitle.innerHTML = `You lost!`;
+            msgEl.classList.add('lost');
         }
 
         // Delay showing modal so players can see the symbol animation
@@ -823,11 +830,13 @@ function handleWrongGuess(data) {
             cards.forEach(c => c.classList.add('wrong'));
             msgTitle.innerText = "You Lost - WRONG!";
             msgBody.innerText = "Opponent wins the point!";
+            msgEl.classList.add('lost');
         } else {
             // Opponent guessed wrong - I win!
             cards.forEach(c => c.classList.add('correct'));
             msgTitle.innerText = "You Win!";
             msgBody.innerText = "Opponent guessed wrong!";
+            msgEl.classList.remove('lost');
         }
 
         // Multiplayer mode - show overlay with countdown
