@@ -573,6 +573,7 @@ function renderBoard(serverCards, isSpectator = false) {
 
             const symContainer = document.createElement('div');
             symContainer.className = `symbol-container pos-${i}`;
+            symContainer.dataset.symbolId = symbolId;
             symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS[i]}deg)`;
 
             // All symbols use sprite (PNG test removed)
@@ -638,6 +639,12 @@ function renderBoard(serverCards, isSpectator = false) {
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
+
+                    // Vibrate all matching symbols across all cards
+                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolId}"]`).forEach(sym => {
+                        sym.classList.add('symbol-match');
+                        setTimeout(() => sym.classList.remove('symbol-match'), 500);
+                    });
 
                     // Send Guess (server will handle correct/wrong)
                     console.log("Clicking symbol:", symbolId, "on card:", cardIndex);
