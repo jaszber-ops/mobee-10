@@ -269,6 +269,7 @@ export default class MobeeServer {
         this.party.broadcast(JSON.stringify({
           type: "WINNER",
           winnerId: guesser,
+          winningSymbol: state.currentAnswer,
           scores: state.scores,
           avatars: state.avatars
         }));
