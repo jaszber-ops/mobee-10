@@ -17,76 +17,60 @@ export default class MobeeServer {
   }
 
   // Helper method to generate and broadcast a new round
-  // If replaceCardIndex is provided, only replace that card
-  async startNewRound(state, replaceCardIndex = null) {
+  // Deck cycles through positions: 0,3,6,1,4,7,2,5 then reshuffles
+  async startNewRound(state) {
     const shuffleArray = (arr) => fisherYatesShuffle(arr);
 
-    let c1, c2, c3;
+    // The 8 starting positions that cycle through all unique 3-card combinations
+    const DECK_POSITIONS = [0, 3, 6, 1, 4, 7, 2, 5];
 
-    if (replaceCardIndex !== null && state.currentShuffledCards && state.currentDeckIndices) {
-      // Replace only the specified card, keep others with their exact shuffle
-      console.log("Current deck indices:", state.currentDeckIndices);
-      console.log("Replacing card index:", replaceCardIndex);
-
-      // Get the deck indices currently in use
-      const usedIndices = state.currentDeckIndices.filter((_, i) => i !== replaceCardIndex);
-
-      // Get available indices (exclude the ones currently in use)
-      const availableIndices = [0,1,2,3,4,5,6,7].filter(idx => !usedIndices.includes(idx));
-
-      console.log("Used deck indices:", usedIndices);
-      console.log("Available deck indices:", availableIndices);
-
-      if (availableIndices.length === 0) {
-        console.error("ERROR: No available indices! This shouldn't happen.");
-        // Fallback - use all indices
-        availableIndices.push(...[0,1,2,3,4,5,6,7]);
-      }
-
-      // Pick a random card from available indices
-      const shuffledAvailable = fisherYatesShuffle(availableIndices);
-      const newCardIndex = shuffledAvailable[0];
-      const newCard = shuffleArray(state.deck[newCardIndex]);
-
-      // Keep the other two cards WITH their existing shuffle
-      c1 = replaceCardIndex === 0 ? newCard : state.currentShuffledCards[0];
-      c2 = replaceCardIndex === 1 ? newCard : state.currentShuffledCards[1];
-      c3 = replaceCardIndex === 2 ? newCard : state.currentShuffledCards[2];
-
-      // Update deck indices
-      const newDeckIndices = [...state.currentDeckIndices];
-      newDeckIndices[replaceCardIndex] = newCardIndex;
-      state.currentDeckIndices = newDeckIndices;
-
-      console.log("✓ Replaced card", replaceCardIndex, "with new card from deck index", newCardIndex);
-      console.log("New deck indices:", newDeckIndices);
+    // Initialize or advance deck position
+    if (state.deckPositionIndex === undefined || state.deckPositionIndex === null) {
+      // First round - shuffle deck order and start at position 0
+      state.shuffledDeckOrder = fisherYatesShuffle([0, 1, 2, 3, 4, 5, 6, 7]);
+      state.deckPositionIndex = 0;
+      console.log("New game - shuffled deck order:", state.shuffledDeckOrder);
     } else {
-      if (replaceCardIndex !== null) {
-        console.log("WARNING: replaceCardIndex provided but missing state data - falling back to 3 new cards");
-        console.log("currentShuffledCards:", !!state.currentShuffledCards, "currentDeckIndices:", !!state.currentDeckIndices);
-      }
-      // Deal 3 new cards (initial round or no previous cards)
-      const shuffledIndices = fisherYatesShuffle([0,1,2,3,4,5,6,7]);
-      const idx = shuffledIndices.slice(0, 3);
-      c1 = shuffleArray(state.deck[idx[0]]);
-      c2 = shuffleArray(state.deck[idx[1]]);
-      c3 = shuffleArray(state.deck[idx[2]]);
+      // Advance to next position
+      state.deckPositionIndex = (state.deckPositionIndex + 1) % DECK_POSITIONS.length;
 
-      // Store which deck indices we used
-      state.currentDeckIndices = [idx[0], idx[1], idx[2]];
+      // If we've cycled back to 0, reshuffle the deck
+      if (state.deckPositionIndex === 0) {
+        state.shuffledDeckOrder = fisherYatesShuffle([0, 1, 2, 3, 4, 5, 6, 7]);
+        console.log("Deck exhausted - reshuffled deck order:", state.shuffledDeckOrder);
+      }
     }
+
+    // Get the starting position for this round's 3-card hand
+    const startPos = DECK_POSITIONS[state.deckPositionIndex];
+
+    // Get 3 consecutive cards from shuffled deck (wrapping around)
+    const deckOrder = state.shuffledDeckOrder;
+    const idx1 = deckOrder[startPos % 8];
+    const idx2 = deckOrder[(startPos + 1) % 8];
+    const idx3 = deckOrder[(startPos + 2) % 8];
+
+    console.log("Position index:", state.deckPositionIndex, "| Start pos:", startPos, "| Card indices:", idx1, idx2, idx3);
+
+    // Shuffle symbols within each card
+    const c1 = shuffleArray(state.deck[idx1]);
+    const c2 = shuffleArray(state.deck[idx2]);
+    const c3 = shuffleArray(state.deck[idx3]);
+
+    // Store which deck indices we used
+    state.currentDeckIndices = [idx1, idx2, idx3];
 
     const answer = c1.find(s => c2.includes(s) && c3.includes(s));
 
     console.log("Common symbol (answer):", answer);
 
     state.currentAnswer = answer;
-    state.currentShuffledCards = [c1, c2, c3]; // Store current SHUFFLED cards for next round
+    state.currentShuffledCards = [c1, c2, c3];
     state.status = "playing";
 
     this.party.broadcast(JSON.stringify({
       type: "NEW_ROUND",
-      cards: [c1, c2, c3], // Already shuffled, don't shuffle again
+      cards: [c1, c2, c3],
       gameStartTime: state.gameStartTime,
       scores: state.scores,
       avatars: state.avatars
@@ -235,6 +219,10 @@ export default class MobeeServer {
         state.scores = Object.fromEntries(
           Object.keys(state.scores).map(id => [id, 0])
         );
+
+        // Reset deck position to start fresh with a new shuffle
+        state.deckPositionIndex = null;
+        state.shuffledDeckOrder = null;
       }
 
       await this.startNewRound(state);
@@ -291,10 +279,10 @@ export default class MobeeServer {
         const playerCount = Object.keys(state.scores).length;
         const delay = playerCount === 1 ? 300 : 4000; // 300ms for single player, 4s for multiplayer
 
-        // Auto-start next round, replacing only the clicked card
+        // Auto-start next round with new 3-card hand
         setTimeout(async () => {
           const currentState = await this.party.storage.get("gamestate");
-          await this.startNewRound(currentState, data.cardIndex);
+          await this.startNewRound(currentState);
         }, delay);
       } else {
         // Wrong answer - lose 1 point if positive
@@ -320,10 +308,10 @@ export default class MobeeServer {
         const playerCount = Object.keys(state.scores).length;
         const delay = playerCount === 1 ? 300 : 4000; // 300ms for single player, 4s for multiplayer
 
-        // Auto-start next round - deal 3 new cards on wrong guess
+        // Auto-start next round with new 3-card hand
         setTimeout(async () => {
           const currentState = await this.party.storage.get("gamestate");
-          await this.startNewRound(currentState, null);
+          await this.startNewRound(currentState);
         }, delay);
       }
     }
