@@ -634,7 +634,7 @@ function renderBoard(serverCards, isSpectator = false) {
                     // Visual feedback immediately
                     const spriteElement = symContainer.querySelector('div, img');
                     spriteElement.style.transform = 'scale(1.5)';
-                    setTimeout(() => spriteElement.style.transform = 'scale(1)', 200);
+                    setTimeout(() => spriteElement.style.transform = '', 200);
 
                     // Add green highlight to the clicked card
                     cardEl.classList.add('correct');
