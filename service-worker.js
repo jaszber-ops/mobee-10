@@ -1,9 +1,13 @@
-const CACHE_NAME = 'mobee-v1.0.0';
+const CACHE_NAME = 'mobee-v1.0.1';  // was v1.0.0
 const STATIC_ASSETS = [
   '/',
   '/index.html',
+  '/style.css',
+  '/script.js',
   '/manifest.json',
+  '/assets/mobee_sprite.svg',
   '/assets/mobee_logo.png',
+  '/assets/mobee_logo_sm.png',
   '/assets/icons/icon-192x192.png',
   '/assets/icons/icon-512x512.png'
 ];

@@ -67,5 +67,6 @@
     }
   ],
   "categories": ["games", "entertainment"],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "privacy_policy_url": "https://mobeecards.store/privacy-policy/"
 }
