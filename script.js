@@ -640,10 +640,10 @@ function renderBoard(serverCards, isSpectator = false) {
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
-                    // Vibrate all matching symbols across all cards
-                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolId}"]`).forEach(sym => {
-                        sym.classList.add('symbol-match');
-                        setTimeout(() => sym.classList.remove('symbol-match'), 500);
+                    // Vibrate all matching symbols across all cards (apply to inner sprite div)
+                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolId}"] > div`).forEach(sprite => {
+                        sprite.classList.add('symbol-match');
+                        setTimeout(() => sprite.classList.remove('symbol-match'), 500);
                     });
 
                     // Send Guess (server will handle correct/wrong)
