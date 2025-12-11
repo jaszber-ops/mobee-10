@@ -508,6 +508,13 @@ button:active { transform: scale(0.95); }
 
 /* Mobile layout fixes */
 @media (max-width: 700px) {
+    /* Scale up cards and spread to fill screen edges */
+    :root {
+        --hex-width: 50%;
+        --hex-height: 57.7%;
+        --spread-radius: 29.8%;
+    }
+
     /* Fix symbol size on mobile */
     .symbol-container > div {
         transform: scale(0.65);
