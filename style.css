@@ -519,15 +519,12 @@ button:active { transform: scale(0.95); }
         padding-top: 2vh;
     }
 
-    /* Increase horizontal spread to fill screen width */
-    :root {
-        --spread-radius: 30%;
-    }
-
-    /* Make game board wider on mobile */
+    /* Make game board fill screen width */
     #game-board {
         width: 100vw;
+        height: 100vw;
         max-width: none;
+        max-height: none;
     }
 }
 
