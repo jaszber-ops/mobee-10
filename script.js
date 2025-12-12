@@ -629,11 +629,21 @@ function scaleGameBoard() {
     // Use the smaller dimension to maintain aspect ratio
     const availableSize = Math.min(availableWidth, availableHeight);
 
-    // Calculate scale factor to fill available space
-    const scale = availableSize / BASE_BOARD_SIZE;
+    // Calculate scale factor to fill available space (use 98% to leave small margin)
+    const scale = (availableSize / BASE_BOARD_SIZE) * 0.98;
 
     // Apply scale transform - this scales the entire board uniformly
     board.style.transform = `scale(${scale})`;
+
+    // Debug: show values on screen for mobile testing
+    console.log('Scale debug:', {
+        containerW: availableWidth,
+        containerH: availableHeight,
+        availableSize,
+        scale,
+        windowW: window.innerWidth,
+        windowH: window.innerHeight
+    });
 }
 
 // Scale on load and resize
