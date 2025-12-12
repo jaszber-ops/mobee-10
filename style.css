@@ -515,11 +515,6 @@ button:active { transform: scale(0.95); }
         --spread-radius: 29.8%;
     }
 
-    /* Fix symbol size on mobile */
-    .symbol-container > div {
-        transform: scale(0.65);
-    }
-
     /* Move cards up closer to timer, away from footer */
     #board-container {
         align-items: flex-start;
@@ -548,10 +543,6 @@ button:active { transform: scale(0.95); }
         height: 95vw;
         max-width: none;
         max-height: none;
-    }
-
-    .symbol-container > div {
-        transform: scale(0.8);
     }
 }
 

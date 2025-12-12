@@ -671,32 +671,35 @@ function renderBoard(serverCards, isSpectator = false) {
                 // Calculate sprite position (same approach as avatar rendering)
                 const [col, row] = symbolObj.sprite;
 
-                // The symbol container is 26% of card width (from CSS)
-                // We want the sprite cell to fill this container
-                // Symbol container is dynamically sized, so we use a fixed pixel size for calculations
-                const displaySize = 60; // Target size in pixels for sprite cell
-                const scaleFactor = displaySize / SPRITE_CELL_SIZE;
-
-                const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
-                const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
-
-                const bgX = -(cellLeft * scaleFactor);
-                const bgY = -(cellTop * scaleFactor);
-
+                // Use 100% to fill the symbol-container, which is sized by CSS
+                // The sprite background will scale proportionally
                 const svgWidth = 841.89;
                 const svgHeight = 595.28;
-                const bgWidth = svgWidth * scaleFactor;
-                const bgHeight = svgHeight * scaleFactor;
 
-                // Create sprite div using background-image
-                // The CSS media query will scale this down on mobile
+                // Calculate percentages for background positioning
+                // Grid is 13 cols x 10 rows, each cell is SPRITE_CELL_SIZE
+                const gridWidth = 13 * SPRITE_CELL_SIZE;
+                const gridHeight = 10 * SPRITE_CELL_SIZE;
+
+                // Background size: scale so one cell = 100% of container
+                const bgWidthPercent = (svgWidth / SPRITE_CELL_SIZE) * 100;
+                const bgHeightPercent = (svgHeight / SPRITE_CELL_SIZE) * 100;
+
+                // Position: offset to show correct cell
+                const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
+                const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
+                const bgXPercent = (cellLeft / SPRITE_CELL_SIZE) * 100;
+                const bgYPercent = (cellTop / SPRITE_CELL_SIZE) * 100;
+
+                // Create sprite div using percentage-based sizing
+                // Symbols now scale with card size automatically
                 symContainer.innerHTML = `
-                    <div style="
-                        width: ${displaySize}px;
-                        height: ${displaySize}px;
+                    <div class="symbol-sprite" style="
+                        width: 100%;
+                        height: 100%;
                         background-image: url('${SPRITE_SVG_URL}');
-                        background-size: ${bgWidth}px ${bgHeight}px;
-                        background-position: ${bgX}px ${bgY}px;
+                        background-size: ${bgWidthPercent}% ${bgHeightPercent}%;
+                        background-position: -${bgXPercent}% -${bgYPercent}%;
                         background-repeat: no-repeat;
                         pointer-events: none;
                         transition: transform 0.2s;
