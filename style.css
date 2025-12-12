@@ -533,4 +533,7 @@ button:active { transform: scale(0.95); }
 
     .stats { font-size: 1.05rem; gap: 16px; }
     .logo-img { max-height: 10svh; }
+
+    /* Hide footer during gameplay to maximize play area */
+    body.playing .footer-link { display: none; }
 }

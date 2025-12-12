@@ -379,6 +379,9 @@ function endGame() {
 }
 
 function showGameOverScreen(scores, avatars) {
+    // Game ended - remove playing state
+    document.body.classList.remove("playing");
+
     // Determine winner
     const sortedPlayers = Object.entries(scores).sort((a, b) => b[1] - a[1]);
     const topScore = sortedPlayers[0][1];
@@ -500,6 +503,7 @@ conn.addEventListener("message", (event) => {
                         clearInterval(countdownInterval);
                         // Countdown done - now start the game
                         msgEl.style.display = 'none';
+                        document.body.classList.add("playing");
                         renderBoard(data.cards);
 
                         // Set game start time and start timer
@@ -518,6 +522,7 @@ conn.addEventListener("message", (event) => {
             } else {
                 // Normal flow: no countdown (single player or mid-game round)
                 msgEl.style.display = 'none';
+                document.body.classList.add("playing");
                 renderBoard(data.cards);
 
                 // Use server's game start time (all players synchronized)
@@ -543,6 +548,7 @@ conn.addEventListener("message", (event) => {
 
         case "GAME_RESET":
             // Server reset the game for all players
+            document.body.classList.remove("playing");
             gameStartTime = null;
             pausedTime = 0;
             pauseStartTime = null;
