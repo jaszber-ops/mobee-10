@@ -235,31 +235,22 @@ export default class MobeeServer {
 
       // If we're starting from lobby (status is waiting), always start a fresh 60-second game
       const isNewGame = !state.gameStartTime || state.status === "waiting";
+      const playerCount = Object.keys(state.scores).length;
+      const isMultiplayer = playerCount > 1;
 
       if (isNewGame) {
-        // Mark that countdown is in progress to prevent multiple starts
+        // Mark that countdown is in progress to prevent multiple starts (multiplayer only)
         if (state.status === "countdown") {
           console.log("Countdown already in progress, ignoring START_GAME");
           return;
         }
 
-        state.status = "countdown";
-        await this.party.storage.put("gamestate", state);
-
-        // Broadcast countdown start to all players
-        this.party.broadcast(JSON.stringify({
-          type: "GAME_STARTING",
-          countdown: 3,
-          scores: state.scores,
-          avatars: state.avatars
-        }));
-
-        // After 3 seconds, actually start the game
-        setTimeout(async () => {
+        // Helper function to start the actual game
+        const startActualGame = async () => {
           let currentState = await this.party.storage.get("gamestate");
 
-          // Only proceed if still in countdown (game wasn't reset)
-          if (currentState.status !== "countdown") {
+          // Only proceed if still in countdown/waiting (game wasn't reset)
+          if (isMultiplayer && currentState.status !== "countdown") {
             console.log("Countdown interrupted, not starting game");
             return;
           }
@@ -298,7 +289,28 @@ export default class MobeeServer {
               }));
             }
           }, 60000);
-        }, 3000);
+        };
+
+        if (isMultiplayer) {
+          // Multiplayer: show 3-2-1 countdown
+          state.status = "countdown";
+          await this.party.storage.put("gamestate", state);
+
+          // Broadcast countdown start to all players
+          this.party.broadcast(JSON.stringify({
+            type: "GAME_STARTING",
+            countdown: 3,
+            scores: state.scores,
+            avatars: state.avatars
+          }));
+
+          // After 3 seconds, actually start the game
+          setTimeout(startActualGame, 3000);
+        } else {
+          // Single player: start immediately, no countdown
+          console.log("Single player mode - starting immediately");
+          await startActualGame();
+        }
       } else {
         // Mid-game start (shouldn't normally happen)
         await this.startNewRound(state);
