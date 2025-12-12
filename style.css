@@ -535,6 +535,26 @@ button:active { transform: scale(0.95); }
     }
 }
 
+/* iPad/tablet portrait mode */
+@media (min-width: 701px) and (max-width: 1100px) and (orientation: portrait) {
+    :root {
+        --hex-width: 48%;
+        --hex-height: 55%;
+        --spread-radius: 28%;
+    }
+
+    #game-board {
+        width: 95vw;
+        height: 95vw;
+        max-width: none;
+        max-height: none;
+    }
+
+    .symbol-container > div {
+        transform: scale(0.8);
+    }
+}
+
 @media (orientation: landscape) and (max-height: 500px) {
     .logo-img { max-height: 8vh; }
     #game-board { width: 70vmin; height: 70vmin; }
