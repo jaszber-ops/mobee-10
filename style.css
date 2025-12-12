@@ -11,10 +11,11 @@ html, body { margin: 0; padding: 0; }
     --success: #BFCA86;
     --error: #E6A07F;
     --card-border-color: #f7f9d2;
-    --card-border-width: 4px;
+    --card-border-width: 7px;
     --hex-height: 50%;
     --hex-width: 43.33%;
     --spread-radius: 25.5%;
+    --symbol-scale: 1;
 }
 
 body {
@@ -39,7 +40,7 @@ body {
 
 header {
     text-align: center;
-    z-index: 50;
+    z-index: 10;
     margin-top: 10px;
     flex-shrink: 0;
     position: relative;
@@ -109,6 +110,27 @@ header {
     mask-image: none;
 }
 
+.card-symbol-sticker {
+    position: absolute;
+    bottom: 7.5%;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.card-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    overflow: visible;
+    pointer-events: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+}
 
 .card-shape {
     fill: #ffffff;
@@ -133,35 +155,53 @@ header {
 .card.wrong { z-index: 15; animation: shake 0.4s; filter: drop-shadow(0 0 15px var(--error)); }
 .card.wrong .card-shape { stroke: var(--error); fill: #fcebe9; }
 
-/* Card SVG fills the card container */
-.card-svg {
+.symbol-container {
     position: absolute;
-    top: 0;
-    left: 0;
+    width: calc(34% * var(--symbol-scale));
+    aspect-ratio: 1 / 1;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    z-index: 10;
+    overflow: visible;
+    clip-path: none !important;
+    -webkit-clip-path: none !important;
+}
+
+.symbol-container img {
     width: 100%;
     height: 100%;
-    display: block;
+    object-fit: contain;
+    transition: transform 0.2s;
+    mix-blend-mode: multiply;
 }
 
-/* Small Møbee logo sticker at bottom of card */
-.card-logo-sticker {
-    position: absolute;
-    bottom: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 3%;
-    aspect-ratio: 1 / 1;
-    pointer-events: none;
-    z-index: 10;
+/* Scale symbol sprites to fill container */
+.symbol-sprite {
+    transform: scale(1);
+    transform-origin: center center;
 }
 
-/* Symbol groups within SVG */
-.symbol-group {
-    cursor: pointer;
-    transform-box: fill-box;
-    transform-origin: center;
-    transition: transform 0.15s ease;
+.symbol-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+
+@media (hover: hover) {
+    .symbol-container:hover { z-index: 20; }
+    .symbol-container:hover > div { transform: scale(1.3); }
+}
+
+.pos-0 { top: 50%; left: 50%; }
+.pos-1 { top: 24%; left: 50%; }
+.pos-2 { top: 37%; left: 73%; }
+.pos-3 { top: 63%; left: 73%; }
+.pos-4 { top: 76%; left: 50%; }
+.pos-5 { top: 63%; left: 27%; }
+.pos-6 { top: 37%; left: 27%; }
 
 #message {
     position: fixed;
@@ -189,19 +229,15 @@ button {
     background: #BEC887;
     color: white;
     border: none;
-    padding: 14px 24px;
-    font-size: 1rem;
-    border-radius: 12px;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    border-radius: 30px;
     cursor: pointer;
     margin: 20px auto 0 auto;
     font-weight: 600;
     display: block;
-    width: 100%;
-    font-family: 'Poppins', sans-serif;
-    transition: background 0.2s, transform 0.1s;
 }
-button:hover { background: #a8b275; }
-button:active { transform: scale(0.97); }
+button:active { transform: scale(0.95); }
 
 @keyframes pulse {
     0% { transform: translate(-50%, -50%) scale(1); }
@@ -214,6 +250,15 @@ button:active { transform: scale(0.97); }
     50% { transform: translate(-50%, -50%) translateX(5px); }
     75% { transform: translate(-50%, -50%) translateX(-5px); }
     100% { transform: translate(-50%, -50%) translateX(0); }
+}
+@keyframes symbolPush {
+    0% { transform: scale(1); }
+    40% { transform: scale(0.7); }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+.symbol-match {
+    animation: symbolPush 0.3s ease-out !important;
 }
 @keyframes countdownPulse {
     0% { transform: scale(0.8); opacity: 0.5; }
@@ -370,39 +415,33 @@ button:active { transform: scale(0.97); }
 .buy-btn {
     background: #4a90e2;
     color: white;
-    padding: 14px 24px;
-    border-radius: 12px;
+    padding: 12px;
+    border-radius: 8px;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: bold;
     font-size: 1rem;
     display: block;
     border: none;
     cursor: pointer;
-    width: 100%;
-    text-align: center;
-    font-family: 'Poppins', sans-serif;
-    transition: background 0.2s, transform 0.1s;
+    transition: background 0.2s;
 }
 
-.buy-btn:hover { background: #357abd; }
-.buy-btn:active { transform: scale(0.97); }
+.buy-btn:hover {
+    background: #357abd;
+}
 
 .stay-btn {
     background: #BEC887;
     border: none;
     color: white;
-    padding: 14px 24px;
-    border-radius: 12px;
-    font-weight: 600;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: bold;
     font-size: 1rem;
     font-family: 'Poppins', sans-serif;
     cursor: pointer;
     width: 100%;
-    transition: background 0.2s, transform 0.1s;
 }
-
-.stay-btn:hover { background: #a8b275; }
-.stay-btn:active { transform: scale(0.97); }
 
 /* Avatar sprites */
 .avatar-sprite {
@@ -496,7 +535,8 @@ button:active { transform: scale(0.97); }
     :root {
         --ui-top: 140px;           /* header/controls above board */
         --ui-bottom: 0px;          /* footer hidden during play */
-        --card-border-width: 3px;  /* lighter border at small sizes */
+        --symbol-scale: 0.70;      /* smaller symbols on iPhone */
+        --card-border-width: 5px;  /* lighter border at small sizes */
         --spread-radius: 24%;      /* tighter card spacing */
     }
 
