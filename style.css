@@ -532,8 +532,12 @@ button:active { transform: scale(0.95); }
 @media (max-width: 430px) {
     /* UI height variables for board sizing */
     :root {
-        --ui-top: 120px;     /* header/controls above board */
-        --ui-bottom: 24px;   /* footer space */
+        --ui-top: 140px;     /* header/controls above board */
+        --ui-bottom: 0px;    /* footer hidden during play */
+    }
+
+    body {
+        min-height: 100svh;
     }
 
     /* Full-bleed board container */
@@ -543,9 +547,9 @@ button:active { transform: scale(0.95); }
         padding: 0 !important;
     }
 
-    /* Square board: use available height, allow full width */
+    /* Square board: use available height with safe area insets */
     #game-board {
-        --availH: calc(100svh - var(--ui-top) - var(--ui-bottom));
+        --availH: calc(100svh - var(--ui-top) - var(--ui-bottom) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         width: min(100vw, var(--availH)) !important;
         height: min(100vw, var(--availH)) !important;
         margin: 0 auto !important;

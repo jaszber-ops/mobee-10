@@ -635,6 +635,12 @@ function scaleGameBoard() {
     const board = document.getElementById('game-board');
     if (!container || !board) return;
 
+    // iPhone: let CSS size the board, do not transform-scale (prevents gutters)
+    if (window.matchMedia('(max-width: 430px)').matches) {
+        board.style.transform = '';
+        return;
+    }
+
     // Get available space
     const containerRect = container.getBoundingClientRect();
     const availableWidth = containerRect.width;
