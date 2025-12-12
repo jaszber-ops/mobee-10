@@ -1,5 +1,9 @@
 /* Møbee Multi - Game Styles */
 
+/* Ensure no mystery gutters */
+html, body { margin: 0; padding: 0; }
+* { box-sizing: border-box; }
+
 :root {
     --bg-color: #f0f4f8;
     --accent: #4a90e2;
@@ -524,11 +528,28 @@ button:active { transform: scale(0.95); }
     .logo-img { max-height: 8vh; }
 }
 
-/* iPhone-specific: height-aware board sizing */
+/* iPhone-specific: full-bleed layout */
 @media (max-width: 430px) {
+    /* UI height variables for board sizing */
+    :root {
+        --ui-top: 120px;     /* header/controls above board */
+        --ui-bottom: 24px;   /* footer space */
+    }
+
+    /* Full-bleed board container */
+    #board-container {
+        width: 100vw !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Square board: use available height, allow full width */
     #game-board {
-        width: min(100vw, 62svh);
-        height: min(100vw, 62svh);
+        --availH: calc(100svh - var(--ui-top) - var(--ui-bottom));
+        width: min(100vw, var(--availH)) !important;
+        height: min(100vw, var(--availH)) !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
     }
 
     .stats { font-size: 1.05rem; gap: 16px; }
