@@ -77,10 +77,10 @@ header {
 
 #game-board {
     position: relative;
-    width: 95vmin;
-    height: 95vmin;
-    max-width: 600px;
-    max-height: 600px;
+    width: 80vmin;
+    height: 80vmin;
+    max-width: none;
+    max-height: none;
     transform-origin: center center;
     transform: translateZ(0);
     z-index: 30;
@@ -537,5 +537,5 @@ button:active { transform: scale(0.95); }
 
 @media (orientation: landscape) and (max-height: 500px) {
     .logo-img { max-height: 8vh; }
-    #game-board { max-width: 400px; max-height: 400px; }
+    #game-board { width: 70vmin; height: 70vmin; }
 }
