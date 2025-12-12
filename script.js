@@ -626,20 +626,13 @@ function scaleGameBoard() {
     const availableWidth = containerRect.width;
     const availableHeight = containerRect.height;
 
-    // On mobile (narrow screens), prioritize width and scale more aggressively
-    let availableSize;
-    if (availableWidth < 500) {
-        // Mobile: use width as primary constraint, fill the screen
-        availableSize = availableWidth * 1.1;
-    } else {
-        // Desktop/tablet: use smaller dimension
-        availableSize = Math.min(availableWidth, availableHeight) * 0.95;
-    }
+    // Use the smaller dimension to maintain aspect ratio
+    const availableSize = Math.min(availableWidth, availableHeight);
 
-    // Calculate scale factor
+    // Calculate scale factor to fill available space
     const scale = availableSize / BASE_BOARD_SIZE;
 
-    // Apply scale transform
+    // Apply scale transform - this scales the entire board uniformly
     board.style.transform = `scale(${scale})`;
 }
 

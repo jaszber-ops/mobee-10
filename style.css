@@ -8,9 +8,9 @@
     --error: #E6A07F;
     --card-border-color: #f7f9d2;
     --card-border-width: 10px;
-    --hex-height: 53%;
-    --hex-width: 46%;
-    --spread-radius: 27%;
+    --hex-height: 50%;
+    --hex-width: 43.33%;
+    --spread-radius: 25%;
 }
 
 body {
@@ -74,6 +74,8 @@ header {
     overflow: hidden;
     position: relative;
     min-height: 0;
+    padding-bottom: 80px; /* Space for fixed footer */
+    box-sizing: border-box;
 }
 
 #game-board {
