@@ -14,6 +14,7 @@ function fisherYatesShuffle(array) {
 export default class MobeeServer {
   constructor(party) {
     this.party = party;
+    this._queue = Promise.resolve();
   }
 
   // Helper method to generate and broadcast a new round
@@ -202,6 +203,10 @@ export default class MobeeServer {
   }
 
   async onMessage(message, sender) {
+    this._queue = this._queue.then(() => this._handleMessage(message, sender)).catch(console.error);
+  }
+
+  async _handleMessage(message, sender) {
     let data;
     try {
       data = JSON.parse(message);
