@@ -234,6 +234,13 @@ window.requestStartGame = function() {
 
 function setupConnectionHandlers() {
 
+// UI Elements - must be declared before event handlers that use them
+const boardEl = document.getElementById('game-board');
+const scoreEl = document.getElementById('score-el');
+const msgEl = document.getElementById('message');
+const msgTitle = document.getElementById('msg-title');
+const msgBody = document.getElementById('msg-body');
+
 // Connection Feedback & Room Sharing
 conn.addEventListener("open", () => {
     console.log("Connected to room:", roomCode);
@@ -259,13 +266,6 @@ conn.addEventListener("open", () => {
     msgEl.classList.remove('lost');
     msgEl.style.display = 'block';
 });
-
-// UI Elements
-const boardEl = document.getElementById('game-board');
-const scoreEl = document.getElementById('score-el');
-const msgEl = document.getElementById('message');
-const msgTitle = document.getElementById('msg-title');
-const msgBody = document.getElementById('msg-body');
 
 // Game Timer
 let gameStartTime = null;
