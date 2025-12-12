@@ -22,6 +22,8 @@ body {
     align-items: center;
     height: 100vh;
     height: -webkit-fill-available;
+    height: 100svh;          /* iOS stable viewport */
+    height: 100dvh;          /* modern browsers */
     margin: 0;
     user-select: none;
     -webkit-user-select: none;
@@ -520,4 +522,15 @@ button:active { transform: scale(0.95); }
 
 @media (orientation: landscape) and (max-height: 500px) {
     .logo-img { max-height: 8vh; }
+}
+
+/* iPhone-specific: height-aware board sizing */
+@media (max-width: 430px) {
+    #game-board {
+        width: min(100vw, 62svh);
+        height: min(100vw, 62svh);
+    }
+
+    .stats { font-size: 1.05rem; gap: 16px; }
+    .logo-img { max-height: 10svh; }
 }
