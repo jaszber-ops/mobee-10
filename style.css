@@ -171,6 +171,18 @@ header {
     mix-blend-mode: multiply;
 }
 
+/* Scale symbol sprites to fill container */
+.symbol-sprite {
+    transform: scale(1);
+    transform-origin: center center;
+}
+
+.symbol-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 @media (hover: hover) {
     .symbol-container:hover { z-index: 20; }
     .symbol-container:hover > div { transform: scale(1.3); }

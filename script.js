@@ -671,35 +671,29 @@ function renderBoard(serverCards, isSpectator = false) {
                 // Calculate sprite position (same approach as avatar rendering)
                 const [col, row] = symbolObj.sprite;
 
-                // Use 100% to fill the symbol-container, which is sized by CSS
-                // The sprite background will scale proportionally
-                const svgWidth = 841.89;
-                const svgHeight = 595.28;
+                // Use pixel-based sizing, CSS will scale the container
+                const displaySize = 60; // Base size in pixels
+                const scaleFactor = displaySize / SPRITE_CELL_SIZE;
 
-                // Calculate percentages for background positioning
-                // Grid is 13 cols x 10 rows, each cell is SPRITE_CELL_SIZE
-                const gridWidth = 13 * SPRITE_CELL_SIZE;
-                const gridHeight = 10 * SPRITE_CELL_SIZE;
-
-                // Background size: scale so one cell = 100% of container
-                const bgWidthPercent = (svgWidth / SPRITE_CELL_SIZE) * 100;
-                const bgHeightPercent = (svgHeight / SPRITE_CELL_SIZE) * 100;
-
-                // Position: offset to show correct cell
                 const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
                 const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
-                const bgXPercent = (cellLeft / SPRITE_CELL_SIZE) * 100;
-                const bgYPercent = (cellTop / SPRITE_CELL_SIZE) * 100;
 
-                // Create sprite div using percentage-based sizing
-                // Symbols now scale with card size automatically
+                const bgX = -(cellLeft * scaleFactor);
+                const bgY = -(cellTop * scaleFactor);
+
+                const svgWidth = 841.89;
+                const svgHeight = 595.28;
+                const bgWidth = svgWidth * scaleFactor;
+                const bgHeight = svgHeight * scaleFactor;
+
+                // Create sprite div - uses fixed pixels but container scales via CSS
                 symContainer.innerHTML = `
                     <div class="symbol-sprite" style="
-                        width: 100%;
-                        height: 100%;
+                        width: ${displaySize}px;
+                        height: ${displaySize}px;
                         background-image: url('${SPRITE_SVG_URL}');
-                        background-size: ${bgWidthPercent}% ${bgHeightPercent}%;
-                        background-position: -${bgXPercent}% -${bgYPercent}%;
+                        background-size: ${bgWidth}px ${bgHeight}px;
+                        background-position: ${bgX}px ${bgY}px;
                         background-repeat: no-repeat;
                         pointer-events: none;
                         transition: transform 0.2s;
