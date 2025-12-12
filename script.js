@@ -644,7 +644,24 @@ const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
 const SYMBOL_SIZE = 26;
 
 // Hex path scaled to viewBox 0 0 100 115 (from original 260x300)
-const HEX_PATH = "M55,4 L92.3,27.7 Q98,31 98,37 L98,79 Q98,85 92.3,88.3 L55,111 Q50,114 45,111 L7.7,88.3 Q2,85 2,79 L2,37 Q2,31 7.7,27.7 L45,4 Q50,1 55,4 Z";
+// Rounded hexagon path for viewBox 0 0 100 115
+// Hexagon with nicely rounded corners using quadratic bezier curves
+const HEX_PATH = `
+  M 50 6
+  L 85 25
+  Q 94 30 94 40
+  L 94 75
+  Q 94 85 85 90
+  L 50 109
+  Q 50 109 50 109
+  L 15 90
+  Q 6 85 6 75
+  L 6 40
+  Q 6 30 15 25
+  L 50 6
+  Q 50 6 50 6
+  Z
+`.replace(/\s+/g, ' ').trim();
 
 // Initialize SVG symbol definitions on page load
 function initSymbolDefs() {

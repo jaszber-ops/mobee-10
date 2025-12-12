@@ -11,7 +11,7 @@ html, body { margin: 0; padding: 0; }
     --success: #BFCA86;
     --error: #E6A07F;
     --card-border-color: #f7f9d2;
-    --card-border-width: 7px;
+    --card-border-width: 4px;
     --hex-height: 50%;
     --hex-width: 43.33%;
     --spread-radius: 25.5%;
@@ -494,7 +494,7 @@ button:active { transform: scale(0.97); }
     :root {
         --ui-top: 140px;           /* header/controls above board */
         --ui-bottom: 0px;          /* footer hidden during play */
-        --card-border-width: 5px;  /* lighter border at small sizes */
+        --card-border-width: 3px;  /* lighter border at small sizes */
         --spread-radius: 24%;      /* tighter card spacing */
     }
 
