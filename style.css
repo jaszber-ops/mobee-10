@@ -135,6 +135,9 @@ header {
 
 /* Card SVG fills the card container */
 .card-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     display: block;
@@ -143,14 +146,13 @@ header {
 /* Small Møbee logo sticker at bottom of card */
 .card-logo-sticker {
     position: absolute;
-    bottom: 8%;
+    bottom: 12%;
     left: 50%;
     transform: translateX(-50%);
-    width: 12%;
-    height: auto;
+    width: 10%;
     aspect-ratio: 1 / 1;
     pointer-events: none;
-    z-index: 5;
+    z-index: 10;
 }
 
 /* Symbol click targets within SVG */
