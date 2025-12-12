@@ -672,7 +672,7 @@ function renderBoard(serverCards, isSpectator = false) {
                 const [col, row] = symbolObj.sprite;
 
                 // Use pixel-based sizing, CSS will scale the container
-                const displaySize = 60; // Base size in pixels
+                const displaySize = 80; // Base size in pixels
                 const scaleFactor = displaySize / SPRITE_CELL_SIZE;
 
                 const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
