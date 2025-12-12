@@ -680,7 +680,7 @@ function renderBoard(serverCards, isSpectator = false) {
             const commonSymbolObj = SYMBOLS.find(s => s.id === commonSymbol);
             if (commonSymbolObj) {
                 const [col, row] = commonSymbolObj.sprite;
-                const stickerSize = 15; // Even smaller circle sticker
+                const stickerSize = 10; // Small circle sticker
                 const scaleFactor = stickerSize / SPRITE_CELL_SIZE;
 
                 const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
@@ -707,7 +707,7 @@ function renderBoard(serverCards, isSpectator = false) {
                         background-position: center;
                         border-radius: 50%;
                         background-color: white;
-                        filter: grayscale(100%) opacity(0.3);
+                        filter: grayscale(100%) opacity(0.2);
                     "></div>
                 `;
                 cardEl.appendChild(sticker);
