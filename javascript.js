@@ -484,69 +484,28 @@ conn.addEventListener("message", (event) => {
                 currentGameStartTime: gameStartTime
             });
 
-            // Check if this is a new game (first round) and multiplayer
-            const isFirstRound = data.gameStartTime && (!gameStartTime || data.gameStartTime !== gameStartTime);
-            const playerCount = data.scores ? Object.keys(data.scores).length : 1;
-            const isMultiplayer = playerCount > 1;
+            // Hide any modal and start playing immediately
+            // (GAME_STARTING already handled the countdown for multiplayer)
+            msgEl.style.display = 'none';
+            document.body.classList.add("playing");
+            renderBoard(data.cards);
 
-            // Show 3-2-1 countdown at game start for multiplayer only
-            if (isFirstRound && isMultiplayer) {
-                // Show countdown overlay
-                msgTitle.innerText = "Get Ready!";
-                msgBody.innerHTML = `<div class="countdown-number">3</div>`;
-                msgEl.style.display = 'block';
-                const startBtn = msgEl.querySelector('button');
-                startBtn.style.display = 'none';
-
-                let countdown = 3;
-                const countdownInterval = setInterval(() => {
-                    countdown--;
-                    if (countdown > 0) {
-                        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-                    } else {
-                        clearInterval(countdownInterval);
-                        // Countdown done - now start the game
-                        msgEl.style.display = 'none';
-                        document.body.classList.add("playing");
-                        renderBoard(data.cards);
-
-                        // Set game start time and start timer
-                        gameStartTime = data.gameStartTime;
-                        if (gameTimerInterval) clearInterval(gameTimerInterval);
-                        pausedTime = 0;
-                        pauseStartTime = null;
-                        startGameTimer();
-
-                        // Update scoreboard
-                        if (data.scores) {
-                            updateScoreboard(data.scores, data.avatars);
-                        }
-                    }
-                }, 1000);
-            } else {
-                // Normal flow: no countdown (single player or mid-game round)
-                msgEl.style.display = 'none';
-                document.body.classList.add("playing");
-                renderBoard(data.cards);
-
-                // Use server's game start time (all players synchronized)
-                // Always update if server sends a new timestamp
-                if (data.gameStartTime) {
-                    const isNewGame = !gameStartTime || data.gameStartTime !== gameStartTime;
-                    gameStartTime = data.gameStartTime;
-                    if (isNewGame) {
-                        // Clear old timer and start fresh
-                        if (gameTimerInterval) clearInterval(gameTimerInterval);
-                        pausedTime = 0;
-                        pauseStartTime = null;
-                        startGameTimer();
-                    }
+            // Use server's game start time (all players synchronized)
+            if (data.gameStartTime) {
+                const isNewGame = !gameStartTime || data.gameStartTime !== gameStartTime;
+                gameStartTime = data.gameStartTime;
+                if (isNewGame) {
+                    // Clear old timer and start fresh
+                    if (gameTimerInterval) clearInterval(gameTimerInterval);
+                    pausedTime = 0;
+                    pauseStartTime = null;
+                    startGameTimer();
                 }
+            }
 
-                // Update scores AFTER setting gameStartTime so timer appears
-                if (data.scores) {
-                    updateScoreboard(data.scores, data.avatars);
-                }
+            // Update scores AFTER setting gameStartTime so timer appears
+            if (data.scores) {
+                updateScoreboard(data.scores, data.avatars);
             }
             break;
 
