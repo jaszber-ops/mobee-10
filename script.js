@@ -625,7 +625,86 @@ conn.addEventListener("message", (event) => {
 
 // --- 5. RENDER THE BOARD (Server Driven) ---
 // serverCards is: [[0,1,2,3,4,5,6], [0,7,8...], ...]
+
+// Symbol positions in SVG viewBox coordinates (0-100 space)
+const SYMBOL_POSITIONS = [
+  { x: 50, y: 57.5 }, // center
+  { x: 50, y: 31.5 },
+  { x: 73, y: 44.5 },
+  { x: 73, y: 70.5 },
+  { x: 50, y: 83.5 },
+  { x: 27, y: 70.5 },
+  { x: 27, y: 44.5 },
+];
+
+// Rotations for each symbol position (degrees)
 const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
+
+// Symbol size in SVG viewBox units (single tuning knob)
+const SYMBOL_SIZE = 26;
+
+// Hex path scaled to viewBox 0 0 100 115 (from original 260x300)
+const HEX_PATH = "M55,4 L92.3,27.7 Q98,31 98,37 L98,79 Q98,85 92.3,88.3 L55,111 Q50,114 45,111 L7.7,88.3 Q2,85 2,79 L2,37 Q2,31 7.7,27.7 L45,4 Q50,1 55,4 Z";
+
+// Initialize SVG symbol definitions on page load
+function initSymbolDefs() {
+  const defsContainer = document.getElementById('symbol-defs');
+  if (!defsContainer) return;
+
+  // Create a <defs> element with <symbol> for each game symbol
+  let defsHTML = '<defs>';
+
+  SYMBOLS.forEach(symbolObj => {
+    const [col, row] = symbolObj.sprite;
+
+    // Calculate sprite position
+    const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
+    const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
+
+    // Each symbol is defined with its own viewBox matching the sprite cell
+    defsHTML += `
+      <symbol id="sym-${symbolObj.id}" viewBox="${cellLeft} ${cellTop} ${SPRITE_CELL_SIZE} ${SPRITE_CELL_SIZE}">
+        <image href="${SPRITE_SVG_URL}" width="841.89" height="595.28" />
+      </symbol>
+    `;
+  });
+
+  defsHTML += '</defs>';
+  defsContainer.innerHTML = defsHTML;
+}
+
+// Render a single card as SVG
+function renderCardSVG(symbolIds) {
+  const half = SYMBOL_SIZE / 2;
+
+  const symbols = symbolIds.map((id, i) => {
+    const { x, y } = SYMBOL_POSITIONS[i];
+    const rotation = ROTATIONS[i];
+    // Rotate around symbol center
+    const transform = rotation !== 0 ? `transform="rotate(${rotation} ${x} ${y})"` : '';
+
+    return `<use href="#sym-${id}"
+                 x="${x - half}"
+                 y="${y - half}"
+                 width="${SYMBOL_SIZE}"
+                 height="${SYMBOL_SIZE}"
+                 ${transform}
+                 data-symbol-id="${id}"
+                 class="card-symbol" />`;
+  }).join("");
+
+  return `
+    <svg class="card-svg"
+         viewBox="0 0 100 115"
+         preserveAspectRatio="xMidYMid meet">
+      <path class="card-shape" d="${HEX_PATH}" />
+      ${symbols}
+    </svg>
+  `;
+}
+
+// Call on page load
+setTimeout(initSymbolDefs, 0);
 
 // Scale the game board to fit available space
 const BASE_BOARD_SIZE = 600; // Fixed base size in pixels
@@ -681,8 +760,8 @@ function renderBoard(serverCards, isSpectator = false) {
     const c1 = serverCards[0];
     const c2 = serverCards[1];
     const c3 = serverCards[2];
-    const commonSymbol = c1.find(s => c2.includes(s) && c3.includes(s));
-    console.log("Common symbol across all cards:", commonSymbol);
+    const commonSymbolId = c1.find(s => c2.includes(s) && c3.includes(s));
+    console.log("Common symbol across all cards:", commonSymbolId);
 
     boardEl.innerHTML = '';
 
@@ -696,91 +775,37 @@ function renderBoard(serverCards, isSpectator = false) {
             cardEl.style.pointerEvents = 'none';
         }
 
-        // Draw Hexagon Shape with all 6 corners rounded symmetrically
-        const svgBg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svgBg.setAttribute("class", "card-bg");
-        svgBg.setAttribute("viewBox", "0 0 260 300");
-        // Hexagon path with all 6 corners rounded using quadratic bezier curves
-        // r=15 corner radius, viewBox 260x300, center at 130,150
-        svgBg.innerHTML = `<path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />`;
-        cardEl.appendChild(svgBg);
+        // Render card as single SVG with all symbols inside
+        cardEl.innerHTML = renderCardSVG(cardSymbolIds);
 
-        // Use server order exactly - no client-side shuffling
-        // Both players must see identical cards!
-        cardSymbolIds.forEach((symbolId, i) => {
-            const symbolObj = SYMBOLS.find(s => s.id === symbolId);
-            if (!symbolObj) return; // Safety check
+        // --- CRITICAL: CLICK HANDLING FOR SYMBOLS ---
+        // Only enable clicks if NOT in spectator mode
+        if (!isSpectator) {
+            // Add click handlers to each symbol in the SVG
+            const symbols = cardEl.querySelectorAll('.card-symbol');
+            symbols.forEach(symbolEl => {
+                const symbolId = parseInt(symbolEl.getAttribute('data-symbol-id'));
 
-            const symContainer = document.createElement('div');
-            symContainer.className = `symbol-container pos-${i}`;
-            symContainer.dataset.symbolId = symbolId;
-            symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS[i]}deg)`;
-
-            // All symbols use sprite (PNG test removed)
-            if (false) {
-                // Use individual PNG
-                symContainer.innerHTML = `
-                    <img src="assets/dna.png" style="
-                        width: 100%;
-                        height: 100%;
-                        object-fit: contain;
-                        pointer-events: none;
-                        transition: transform 0.2s;
-                    ">
-                `;
-            } else {
-                // Calculate sprite position (same approach as avatar rendering)
-                const [col, row] = symbolObj.sprite;
-
-                // Use pixel-based sizing, CSS will scale the container
-                const displaySize = 66; // Base size in pixels
-                const scaleFactor = displaySize / SPRITE_CELL_SIZE;
-
-                const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
-                const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
-
-                const bgX = -(cellLeft * scaleFactor);
-                const bgY = -(cellTop * scaleFactor);
-
-                const svgWidth = 841.89;
-                const svgHeight = 595.28;
-                const bgWidth = svgWidth * scaleFactor;
-                const bgHeight = svgHeight * scaleFactor;
-
-                // Create sprite div - uses fixed pixels but container scales via CSS
-                symContainer.innerHTML = `
-                    <div class="symbol-sprite" style="
-                        width: ${displaySize}px;
-                        height: ${displaySize}px;
-                        background-image: url('${SPRITE_SVG_URL}');
-                        background-size: ${bgWidth}px ${bgHeight}px;
-                        background-position: ${bgX}px ${bgY}px;
-                        background-repeat: no-repeat;
-                        pointer-events: none;
-                        transition: transform 0.2s;
-                    "></div>
-                `;
-            }
-
-            // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
-            // Only enable clicks if NOT in spectator mode
-            if (!isSpectator) {
-                symContainer.onpointerdown = (e) => {
+                symbolEl.style.cursor = 'pointer';
+                symbolEl.onpointerdown = (e) => {
                     e.stopPropagation();
                     e.preventDefault();
 
-                    // Visual feedback immediately
-                    const spriteElement = symContainer.querySelector('div, img');
-                    spriteElement.style.transform = 'scale(1.5)';
-                    setTimeout(() => spriteElement.style.transform = '', 200);
+                    // Visual feedback - scale the clicked symbol
+                    symbolEl.style.transform = symbolEl.style.transform
+                        ? symbolEl.style.transform + ' scale(1.3)'
+                        : 'scale(1.3)';
+                    setTimeout(() => {
+                        symbolEl.style.transform = symbolEl.style.transform.replace(' scale(1.3)', '').replace('scale(1.3)', '');
+                    }, 200);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
-                    // Vibrate all matching symbols across all cards (apply to inner sprite div)
-                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolId}"] > div`).forEach(sprite => {
-                        sprite.classList.add('symbol-match');
-                        setTimeout(() => sprite.classList.remove('symbol-match'), 500);
+                    // Vibrate all matching symbols across all cards
+                    document.querySelectorAll(`.card-symbol[data-symbol-id="${symbolId}"]`).forEach(sym => {
+                        sym.classList.add('symbol-match');
+                        setTimeout(() => sym.classList.remove('symbol-match'), 500);
                     });
 
                     // Send Guess (server will handle correct/wrong)
@@ -788,63 +813,11 @@ function renderBoard(serverCards, isSpectator = false) {
                     safeSend({
                         type: "GUESS",
                         symbol: symbolId,
-                        cardIndex: cardIndex,  // Send which card was clicked
-                        sessionToken: sessionToken  // Server validates this
+                        cardIndex: cardIndex,
+                        sessionToken: sessionToken
                     });
                 };
-            }
-
-            cardEl.appendChild(symContainer);
-        });
-
-        // Find the common symbol (the one that appears on all 3 cards)
-        // Each card has symbols at positions 0-6, we need to find which symbol appears on this card
-        // that also appears on the other two cards
-        const allSymbolsOnThisCard = cardSymbolIds;
-        const allSymbolsOnOtherCards = serverCards
-            .filter(otherCard => otherCard !== cardSymbolIds)
-            .flat();
-
-        const commonSymbol = allSymbolsOnThisCard.find(symbolId =>
-            allSymbolsOnOtherCards.filter(s => s === symbolId).length >= 2
-        );
-
-        if (commonSymbol !== undefined) {
-            const commonSymbolObj = SYMBOLS.find(s => s.id === commonSymbol);
-            if (commonSymbolObj) {
-                const [col, row] = commonSymbolObj.sprite;
-                const stickerSize = 10; // Small circle sticker
-                const scaleFactor = stickerSize / SPRITE_CELL_SIZE;
-
-                const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
-                const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
-
-                const bgX = -(cellLeft * scaleFactor);
-                const bgY = -(cellTop * scaleFactor);
-
-                const svgWidth = 841.89;
-                const svgHeight = 595.28;
-                const bgWidth = svgWidth * scaleFactor;
-                const bgHeight = svgHeight * scaleFactor;
-
-                // Create circle sticker with grayscale Møbee logo
-                const sticker = document.createElement('div');
-                sticker.className = 'card-symbol-sticker';
-                sticker.innerHTML = `
-                    <div style="
-                        width: ${stickerSize}px;
-                        height: ${stickerSize}px;
-                        background-image: url('assets/mobee_logo_sm.png');
-                        background-size: contain;
-                        background-repeat: no-repeat;
-                        background-position: center;
-                        border-radius: 50%;
-                        background-color: white;
-                        filter: grayscale(100%) opacity(0.2);
-                    "></div>
-                `;
-                cardEl.appendChild(sticker);
-            }
+            });
         }
 
         boardEl.appendChild(cardEl);
