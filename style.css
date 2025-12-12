@@ -15,6 +15,7 @@ html, body { margin: 0; padding: 0; }
     --hex-height: 50%;
     --hex-width: 43.33%;
     --spread-radius: 25.5%;
+    --symbol-scale: 1;
 }
 
 body {
@@ -156,7 +157,7 @@ header {
 
 .symbol-container {
     position: absolute;
-    width: 34%;
+    width: calc(34% * var(--symbol-scale));
     aspect-ratio: 1 / 1;
     height: auto;
     display: flex;
@@ -530,10 +531,13 @@ button:active { transform: scale(0.95); }
 
 /* iPhone-specific: full-bleed layout */
 @media (max-width: 430px) {
-    /* UI height variables for board sizing */
+    /* iPhone-specific variable overrides */
     :root {
-        --ui-top: 140px;     /* header/controls above board */
-        --ui-bottom: 0px;    /* footer hidden during play */
+        --ui-top: 140px;           /* header/controls above board */
+        --ui-bottom: 0px;          /* footer hidden during play */
+        --symbol-scale: 0.82;      /* smaller symbols on iPhone */
+        --card-border-width: 5px;  /* lighter border at small sizes */
+        --spread-radius: 24%;      /* tighter card spacing */
     }
 
     body {
@@ -558,9 +562,6 @@ button:active { transform: scale(0.95); }
 
     .stats { font-size: 1.05rem; gap: 16px; }
     .logo-img { max-height: 10svh; }
-
-    /* Smaller symbols on iPhone */
-    .symbol-container { width: 80%; }
 
     /* Hide footer during gameplay to maximize play area */
     body.playing .footer-link { display: none; }
