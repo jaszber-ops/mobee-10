@@ -87,7 +87,14 @@ export default class MobeeServer {
     // Store playerId on connection object for later use
     conn.playerId = playerId;
 
-    console.log("Player connected:", playerId, "(conn:", conn.id + ")");
+    // Generate server-side session token to prevent spoofing
+    const sessionToken = crypto.randomUUID();
+    conn.sessionToken = sessionToken;
+
+    // Initialize rate limiting for this connection
+    conn.lastGuessTime = 0;
+
+    console.log("Player connected:", playerId, "(conn:", conn.id, "token:", sessionToken.slice(0, 8) + "...)");
 
     let state = await this.party.storage.get("gamestate");
 
@@ -166,6 +173,12 @@ export default class MobeeServer {
 
       await this.party.storage.put("gamestate", state);
     }
+
+    // Send session token to client
+    conn.send(JSON.stringify({
+      type: "SESSION",
+      sessionToken: sessionToken
+    }));
 
     // Send current game state to the connecting player
     const playerCount = Object.keys(state.scores).length;
@@ -319,6 +332,20 @@ export default class MobeeServer {
 
     if (data.type === "GUESS") {
       if (state.status !== "playing") return;
+
+      // Validate session token
+      if (!data.sessionToken || data.sessionToken !== sender.sessionToken) {
+        console.log("Invalid session token from", sender.playerId);
+        return;
+      }
+
+      // Rate limit: ignore if last guess < 150ms ago
+      const now = Date.now();
+      if (now - sender.lastGuessTime < 150) {
+        console.log("Rate limited guess from", sender.playerId);
+        return;
+      }
+      sender.lastGuessTime = now;
 
       // Check if game time has expired
       if (state.gameEndsAt && Date.now() > state.gameEndsAt) {

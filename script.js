@@ -43,6 +43,9 @@ if (!playerId) {
     localStorage.setItem('mobee_player_id', playerId);
 }
 
+// Server-assigned session token (received on connect)
+let sessionToken = null;
+
 // Avatar selection system
 // Sprite sheet is 13 columns (A-M) x 10 rows (1-10) = 130 avatars
 let selectedAvatar = localStorage.getItem('mobee_avatar') || '0,0'; // Default to top-left (A1)
@@ -457,6 +460,11 @@ conn.addEventListener("message", (event) => {
             window.location.reload();
             break;
 
+        case "SESSION":
+            sessionToken = data.sessionToken;
+            console.log("Session token received:", sessionToken.slice(0, 8) + "...");
+            break;
+
         case "UPDATE_SCORES":
             updateScoreboard(data.scores, data.avatars);
             break;
@@ -768,7 +776,8 @@ function renderBoard(serverCards, isSpectator = false) {
                     safeSend({
                         type: "GUESS",
                         symbol: symbolId,
-                        cardIndex: cardIndex  // Send which card was clicked
+                        cardIndex: cardIndex,  // Send which card was clicked
+                        sessionToken: sessionToken  // Server validates this
                     });
                 };
             }
