@@ -158,14 +158,12 @@ header {
 /* Symbol click targets within SVG */
 .card-symbol {
     cursor: pointer;
-    transition: transform 0.2s ease;
-    transform-origin: center center;
-    transform-box: fill-box;
+    transition: opacity 0.2s ease;
 }
 
 @media (hover: hover) {
     .card-symbol:hover {
-        transform: scale(1.15);
+        opacity: 0.7;
     }
 }
 
@@ -222,15 +220,14 @@ button:active { transform: scale(0.97); }
     100% { transform: translate(-50%, -50%) translateX(0); }
 }
 @keyframes symbolPush {
-    0% { transform: scale(1); }
-    40% { transform: scale(0.7); }
-    70% { transform: scale(1.1); }
-    100% { transform: scale(1); }
+    0% { opacity: 1; }
+    30% { opacity: 0.3; }
+    60% { opacity: 1; }
+    80% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 .symbol-match {
-    animation: symbolPush 0.3s ease-out !important;
-    transform-origin: center center;
-    transform-box: fill-box;
+    animation: symbolPush 0.4s ease-out !important;
 }
 @keyframes countdownPulse {
     0% { transform: scale(0.8); opacity: 0.5; }

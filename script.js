@@ -811,18 +811,10 @@ function renderBoard(serverCards, isSpectator = false) {
                     e.stopPropagation();
                     e.preventDefault();
 
-                    // Visual feedback - scale the clicked symbol
-                    symbolEl.style.transform = symbolEl.style.transform
-                        ? symbolEl.style.transform + ' scale(1.3)'
-                        : 'scale(1.3)';
-                    setTimeout(() => {
-                        symbolEl.style.transform = symbolEl.style.transform.replace(' scale(1.3)', '').replace('scale(1.3)', '');
-                    }, 200);
-
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
-                    // Vibrate all matching symbols across all cards
+                    // Flash all matching symbols across all cards
                     document.querySelectorAll(`.card-symbol[data-symbol-id="${symbolId}"]`).forEach(sym => {
                         sym.classList.add('symbol-match');
                         setTimeout(() => sym.classList.remove('symbol-match'), 500);
