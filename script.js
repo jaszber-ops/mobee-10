@@ -698,17 +698,19 @@ function renderCardSVG(symbolIds) {
   const symbols = symbolIds.map((id, i) => {
     const { x, y } = SYMBOL_POSITIONS[i];
     const rotation = ROTATIONS[i];
-    // Rotate around symbol center
-    const transform = rotation !== 0 ? `transform="rotate(${rotation} ${x} ${y})"` : '';
 
-    return `<use href="#sym-${id}"
-                 x="${x - half}"
-                 y="${y - half}"
-                 width="${SYMBOL_SIZE}"
-                 height="${SYMBOL_SIZE}"
-                 ${transform}
-                 data-symbol-id="${id}"
-                 class="card-symbol" />`;
+    // Wrap in group for rotation, use element gets animation class
+    const rotateTransform = rotation !== 0 ? `transform="rotate(${rotation} ${x} ${y})"` : '';
+
+    return `<g ${rotateTransform}>
+              <use href="#sym-${id}"
+                   x="${x - half}"
+                   y="${y - half}"
+                   width="${SYMBOL_SIZE}"
+                   height="${SYMBOL_SIZE}"
+                   data-symbol-id="${id}"
+                   class="card-symbol" />
+            </g>`;
   }).join("");
 
   return `
