@@ -563,12 +563,12 @@ function renderBoard(serverCards, isSpectator = false) {
             cardEl.style.pointerEvents = 'none';
         }
 
-        // Draw Hexagon Shape with rounded corners
+        // Draw Hexagon Shape with all 6 corners rounded symmetrically
         const svgBg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svgBg.setAttribute("class", "card-bg");
         svgBg.setAttribute("viewBox", "0 0 260 300");
-        // Hexagon path with rounded corners using quadratic bezier curves
-        svgBg.innerHTML = `<path class="card-shape" d="M130,5 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L130,295 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 Z" />`;
+        // Hexagon path with all 6 corners rounded using quadratic bezier curves
+        svgBg.innerHTML = `<path class="card-shape" d="M130,15 Q130,5 140,10 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L140,290 Q130,295 120,290 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L120,10 Q130,5 130,15 Z" />`;
         cardEl.appendChild(svgBg);
 
         // Use server order exactly - no client-side shuffling
