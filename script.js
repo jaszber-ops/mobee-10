@@ -808,19 +808,32 @@ function renderBoard(serverCards, isSpectator = false) {
             const symbolGroups = cardEl.querySelectorAll('.symbol-group');
             symbolGroups.forEach(groupEl => {
                 const symbolId = parseInt(groupEl.getAttribute('data-symbol-id'));
-                const rotation = groupEl.getAttribute('data-rotation');
-                const cx = groupEl.getAttribute('data-cx');
-                const cy = groupEl.getAttribute('data-cy');
+                const useEl = groupEl.querySelector('use');
 
-                // Build base transform (rotation if any)
-                const baseTransform = rotation !== '0' ? `rotate(${rotation} ${cx} ${cy})` : '';
+                // Store original values
+                const origX = parseFloat(useEl.getAttribute('x'));
+                const origY = parseFloat(useEl.getAttribute('y'));
+                const origW = parseFloat(useEl.getAttribute('width'));
+                const origH = parseFloat(useEl.getAttribute('height'));
 
-                // Hover handlers for scale effect
+                // Hover handlers - grow the use element from its center
+                const scaleFactor = 1.15;
+                const newW = origW * scaleFactor;
+                const newH = origH * scaleFactor;
+                const newX = origX - (newW - origW) / 2;
+                const newY = origY - (newH - origH) / 2;
+
                 groupEl.onmouseenter = () => {
-                    groupEl.setAttribute('transform', baseTransform + ` translate(${cx}, ${cy}) scale(1.15) translate(-${cx}, -${cy})`);
+                    useEl.setAttribute('x', newX);
+                    useEl.setAttribute('y', newY);
+                    useEl.setAttribute('width', newW);
+                    useEl.setAttribute('height', newH);
                 };
                 groupEl.onmouseleave = () => {
-                    groupEl.setAttribute('transform', baseTransform);
+                    useEl.setAttribute('x', origX);
+                    useEl.setAttribute('y', origY);
+                    useEl.setAttribute('width', origW);
+                    useEl.setAttribute('height', origH);
                 };
 
                 groupEl.onpointerdown = (e) => {
