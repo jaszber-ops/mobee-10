@@ -165,7 +165,7 @@ header {
 
 @media (hover: hover) {
     .card-symbol:hover {
-        filter: brightness(1.1);
+        transform: scale(1.15);
     }
 }
 
