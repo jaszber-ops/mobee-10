@@ -643,23 +643,25 @@ const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
 // Symbol size in SVG viewBox units (single tuning knob)
 const SYMBOL_SIZE = 26;
 
-// Hex path scaled to viewBox 0 0 100 115 (from original 260x300)
 // Rounded hexagon path for viewBox 0 0 100 115
-// Hexagon with nicely rounded corners using quadratic bezier curves
+// 6-way symmetric hexagon with all corners equally rounded
+// Center at (50, 57.5), radius ~50, corner radius ~8
 const HEX_PATH = `
-  M 50 6
-  L 85 25
-  Q 94 30 94 40
-  L 94 75
-  Q 94 85 85 90
-  L 50 109
-  Q 50 109 50 109
-  L 15 90
-  Q 6 85 6 75
-  L 6 40
-  Q 6 30 15 25
-  L 50 6
-  Q 50 6 50 6
+  M 50 8
+  Q 58 8 62 12
+  L 88 32
+  Q 94 36 94 44
+  L 94 71
+  Q 94 79 88 83
+  L 62 103
+  Q 58 107 50 107
+  Q 42 107 38 103
+  L 12 83
+  Q 6 79 6 71
+  L 6 44
+  Q 6 36 12 32
+  L 38 12
+  Q 42 8 50 8
   Z
 `.replace(/\s+/g, ' ').trim();
 
