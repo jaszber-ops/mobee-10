@@ -699,17 +699,20 @@ function renderCardSVG(symbolIds) {
     const { x, y } = SYMBOL_POSITIONS[i];
     const rotation = ROTATIONS[i];
 
-    // Wrap in group for rotation, use element gets animation class
-    const rotateTransform = rotation !== 0 ? `transform="rotate(${rotation} ${x} ${y})"` : '';
+    // Group handles both rotation and hover scale, with transform-origin at symbol center
+    const rotateTransform = rotation !== 0 ? `rotate(${rotation} ${x} ${y})` : '';
 
-    return `<g ${rotateTransform}>
+    return `<g class="symbol-group"
+               style="transform-origin: ${x}px ${y}px"
+               ${rotateTransform ? `transform="${rotateTransform}"` : ''}
+               data-symbol-id="${id}"
+               data-rotation="${rotation}"
+               data-cx="${x}" data-cy="${y}">
               <use href="#sym-${id}"
                    x="${x - half}"
                    y="${y - half}"
                    width="${SYMBOL_SIZE}"
-                   height="${SYMBOL_SIZE}"
-                   data-symbol-id="${id}"
-                   class="card-symbol" />
+                   height="${SYMBOL_SIZE}" />
             </g>`;
   }).join("");
 
@@ -801,24 +804,17 @@ function renderBoard(serverCards, isSpectator = false) {
         // --- CRITICAL: CLICK HANDLING FOR SYMBOLS ---
         // Only enable clicks if NOT in spectator mode
         if (!isSpectator) {
-            // Add click handlers to each symbol in the SVG
-            const symbols = cardEl.querySelectorAll('.card-symbol');
-            symbols.forEach(symbolEl => {
-                const symbolId = parseInt(symbolEl.getAttribute('data-symbol-id'));
+            // Add click handlers to each symbol group in the SVG
+            const symbolGroups = cardEl.querySelectorAll('.symbol-group');
+            symbolGroups.forEach(groupEl => {
+                const symbolId = parseInt(groupEl.getAttribute('data-symbol-id'));
 
-                symbolEl.style.cursor = 'pointer';
-                symbolEl.onpointerdown = (e) => {
+                groupEl.onpointerdown = (e) => {
                     e.stopPropagation();
                     e.preventDefault();
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
-
-                    // Flash all matching symbols across all cards
-                    document.querySelectorAll(`.card-symbol[data-symbol-id="${symbolId}"]`).forEach(sym => {
-                        sym.classList.add('symbol-match');
-                        setTimeout(() => sym.classList.remove('symbol-match'), 500);
-                    });
 
                     // Send Guess (server will handle correct/wrong)
                     console.log("Clicking symbol:", symbolId, "on card:", cardIndex);
@@ -866,13 +862,6 @@ function handleWinner(data) {
 
     const winnerAvatar = getAvatarHTML(data.avatars[data.winnerId]);
 
-    // Animate the winning symbol on all cards for all players
-    if (data.winningSymbol !== undefined) {
-        document.querySelectorAll(`.card-symbol[data-symbol-id="${data.winningSymbol}"]`).forEach(sym => {
-            sym.classList.add('symbol-match');
-            setTimeout(() => sym.classList.remove('symbol-match'), 500);
-        });
-    }
 
     // Check if single player mode (only 1 player)
     const playerCount = Object.keys(data.scores).length;

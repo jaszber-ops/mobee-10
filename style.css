@@ -155,15 +155,15 @@ header {
     z-index: 10;
 }
 
-/* Symbol click targets within SVG */
-.card-symbol {
+/* Symbol groups within SVG */
+.symbol-group {
     cursor: pointer;
-    transition: opacity 0.2s ease;
+    transition: transform 0.15s ease;
 }
 
 @media (hover: hover) {
-    .card-symbol:hover {
-        opacity: 0.7;
+    .symbol-group:hover {
+        transform: scale(1.15);
     }
 }
 
@@ -218,16 +218,6 @@ button:active { transform: scale(0.97); }
     50% { transform: translate(-50%, -50%) translateX(5px); }
     75% { transform: translate(-50%, -50%) translateX(-5px); }
     100% { transform: translate(-50%, -50%) translateX(0); }
-}
-@keyframes symbolPush {
-    0% { opacity: 1; }
-    30% { opacity: 0.3; }
-    60% { opacity: 1; }
-    80% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-.symbol-match {
-    animation: symbolPush 0.4s ease-out !important;
 }
 @keyframes countdownPulse {
     0% { transform: scale(0.8); opacity: 0.5; }
