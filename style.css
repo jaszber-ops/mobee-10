@@ -10,7 +10,7 @@
     --card-border-width: 7px;
     --hex-height: 50%;
     --hex-width: 43.33%;
-    --spread-radius: 27%;
+    --spread-radius: 24%;
 }
 
 body {
@@ -71,10 +71,10 @@ header {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
+    overflow: visible;
     position: relative;
     min-height: 0;
-    padding-bottom: 80px; /* Space for fixed footer */
+    padding: 10px 0 80px 0; /* Top padding + space for fixed footer */
     box-sizing: border-box;
 }
 
