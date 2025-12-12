@@ -162,6 +162,12 @@ header {
     transform-origin: center;
     transition: transform 0.15s ease;
 }
+.symbol-group.is-hover {
+    transform: scale(1.15);
+}
+.symbol-group.is-press {
+    transform: scale(0.92);
+}
 
 #message {
     position: fixed;

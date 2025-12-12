@@ -811,28 +811,21 @@ function renderBoard(serverCards, isSpectator = false) {
             const symbolGroups = cardEl.querySelectorAll('.symbol-group');
             symbolGroups.forEach(groupEl => {
                 const symbolId = parseInt(groupEl.getAttribute('data-symbol-id'));
-                const cx = parseFloat(groupEl.dataset.cx);
-                const cy = parseFloat(groupEl.dataset.cy);
-                const rot = parseFloat(groupEl.dataset.rotation || "0");
 
-                // Helper to set SVG transform with scale around symbol center
-                function setGroupTransform(scale) {
-                    groupEl.setAttribute(
-                        "transform",
-                        `translate(${cx} ${cy}) rotate(${rot}) scale(${scale}) translate(${-cx} ${-cy})`
-                    );
-                }
-
-                groupEl.onmouseenter = () => setGroupTransform(1.15);
-                groupEl.onmouseleave = () => setGroupTransform(1.0);
+                // Use CSS classes for hover/press animations (CSS transition animates these)
+                groupEl.onmouseenter = () => groupEl.classList.add("is-hover");
+                groupEl.onmouseleave = () => groupEl.classList.remove("is-hover");
 
                 groupEl.onpointerdown = (e) => {
                     e.stopPropagation();
                     e.preventDefault();
 
-                    // Small press feedback
-                    setGroupTransform(0.92);
-                    setTimeout(() => setGroupTransform(1.15), 60);
+                    // Press feedback via CSS class
+                    groupEl.classList.add("is-press");
+                    setTimeout(() => {
+                        groupEl.classList.remove("is-press");
+                        groupEl.classList.add("is-hover");
+                    }, 60);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
