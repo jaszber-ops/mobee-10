@@ -639,29 +639,17 @@ function scaleGameBoard() {
     const board = document.getElementById('game-board');
     if (!container || !board) return;
 
-    // Get available space
+    // iPhone / small screens: CSS-only sizing (no JS scaling)
+    if (window.matchMedia('(max-width: 430px)').matches) {
+        board.style.transform = 'none';
+        return;
+    }
+
+    // Desktop / iPad: keep existing scaling behavior
     const containerRect = container.getBoundingClientRect();
-    const availableWidth = containerRect.width;
-    const availableHeight = containerRect.height;
-
-    // Use the smaller dimension to maintain aspect ratio
-    const availableSize = Math.min(availableWidth, availableHeight);
-
-    // Calculate scale factor to fill available space (use 98% to leave small margin)
+    const availableSize = Math.min(containerRect.width, containerRect.height);
     const scale = (availableSize / BASE_BOARD_SIZE) * 0.98;
-
-    // Apply scale transform - this scales the entire board uniformly
     board.style.transform = `scale(${scale})`;
-
-    // Debug: show values on screen for mobile testing
-    console.log('Scale debug:', {
-        containerW: availableWidth,
-        containerH: availableHeight,
-        availableSize,
-        scale,
-        windowW: window.innerWidth,
-        windowH: window.innerHeight
-    });
 }
 
 // Scale on load and resize
