@@ -480,6 +480,13 @@ a.stay-btn {
     object-fit: contain;
 }
 
+/* Shop modal: larger on desktop */
+#shop-modal .modal-content {
+    width: 480px;
+    max-width: 90%;
+    padding: 40px;
+}
+
 /* Keep the modal stack spacing consistent */
 .modal-actions {
     display: flex;
