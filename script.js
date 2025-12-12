@@ -699,12 +699,10 @@ function renderCardSVG(symbolIds) {
     const { x, y } = SYMBOL_POSITIONS[i];
     const rotation = ROTATIONS[i];
 
-    // Group handles both rotation and hover scale, with transform-origin at symbol center
-    const rotateTransform = rotation !== 0 ? `rotate(${rotation} ${x} ${y})` : '';
-
+    // Use pure SVG transforms: translate to center, rotate, translate back
+    // This keeps rotation and scale centered on the symbol
     return `<g class="symbol-group"
-               style="transform-origin: ${x}px ${y}px"
-               ${rotateTransform ? `transform="${rotateTransform}"` : ''}
+               transform="translate(${x} ${y}) rotate(${rotation}) translate(${-x} ${-y})"
                data-symbol-id="${id}"
                data-rotation="${rotation}"
                data-cx="${x}" data-cy="${y}">
@@ -808,37 +806,28 @@ function renderBoard(serverCards, isSpectator = false) {
             const symbolGroups = cardEl.querySelectorAll('.symbol-group');
             symbolGroups.forEach(groupEl => {
                 const symbolId = parseInt(groupEl.getAttribute('data-symbol-id'));
-                const useEl = groupEl.querySelector('use');
+                const cx = parseFloat(groupEl.dataset.cx);
+                const cy = parseFloat(groupEl.dataset.cy);
+                const rot = parseFloat(groupEl.dataset.rotation || "0");
 
-                // Store original values
-                const origX = parseFloat(useEl.getAttribute('x'));
-                const origY = parseFloat(useEl.getAttribute('y'));
-                const origW = parseFloat(useEl.getAttribute('width'));
-                const origH = parseFloat(useEl.getAttribute('height'));
+                // Helper to set SVG transform with scale around symbol center
+                function setGroupTransform(scale) {
+                    groupEl.setAttribute(
+                        "transform",
+                        `translate(${cx} ${cy}) rotate(${rot}) scale(${scale}) translate(${-cx} ${-cy})`
+                    );
+                }
 
-                // Hover handlers - grow the use element from its center
-                const scaleFactor = 1.15;
-                const newW = origW * scaleFactor;
-                const newH = origH * scaleFactor;
-                const newX = origX - (newW - origW) / 2;
-                const newY = origY - (newH - origH) / 2;
-
-                groupEl.onmouseenter = () => {
-                    useEl.setAttribute('x', newX);
-                    useEl.setAttribute('y', newY);
-                    useEl.setAttribute('width', newW);
-                    useEl.setAttribute('height', newH);
-                };
-                groupEl.onmouseleave = () => {
-                    useEl.setAttribute('x', origX);
-                    useEl.setAttribute('y', origY);
-                    useEl.setAttribute('width', origW);
-                    useEl.setAttribute('height', origH);
-                };
+                groupEl.onmouseenter = () => setGroupTransform(1.15);
+                groupEl.onmouseleave = () => setGroupTransform(1.0);
 
                 groupEl.onpointerdown = (e) => {
                     e.stopPropagation();
                     e.preventDefault();
+
+                    // Small press feedback
+                    setGroupTransform(0.92);
+                    setTimeout(() => setGroupTransform(1.15), 60);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
