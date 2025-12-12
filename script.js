@@ -184,6 +184,7 @@ function createConnection() {
         }
         msgTitle.innerText = "Connection Error";
         msgBody.innerHTML = "Lost connection to server. Attempting to reconnect...";
+        msgEl.classList.remove('lost');
         msgEl.style.display = 'block';
     });
 
@@ -252,6 +253,7 @@ conn.addEventListener("open", () => {
     `;
 
     // Show the message element
+    msgEl.classList.remove('lost');
     msgEl.style.display = 'block';
 });
 
@@ -384,6 +386,7 @@ function showGameOverScreen(scores, avatars) {
     const isSinglePlayer = playerCount === 1;
 
     // Show game over screen
+    msgEl.classList.remove('lost'); // Reset border color by default
     if (isSinglePlayer) {
         // Single player mode - just show matches found
         msgTitle.innerText = "Time's up!";
@@ -408,6 +411,7 @@ function showGameOverScreen(scores, avatars) {
             const winnerAvatar = getAvatarHTML(avatars[winnerId]);
             msgTitle.innerHTML = `You lost!`;
             msgBody.innerHTML = `Your Score: ${myScore}`;
+            msgEl.classList.add('lost');
         }
     }
 
@@ -561,6 +565,7 @@ conn.addEventListener("message", (event) => {
             // Show spectator message
             msgTitle.innerText = "Spectating";
             msgBody.innerHTML = `<p>You joined mid-game!<br>You'll play in the next round.</p>`;
+            msgEl.classList.remove('lost');
             msgEl.style.display = 'block';
 
             // Start timer sync if game is running
@@ -600,11 +605,13 @@ function renderBoard(serverCards, isSpectator = false) {
             cardEl.style.pointerEvents = 'none';
         }
 
-        // Draw Hexagon Shape
+        // Draw Hexagon Shape with all 6 corners rounded symmetrically
         const svgBg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svgBg.setAttribute("class", "card-bg");
         svgBg.setAttribute("viewBox", "0 0 260 300");
-        svgBg.innerHTML = `<polygon class="card-shape" points="130,5 255,80 255,220 130,295 5,220 5,80" />`;
+        // Hexagon path with all 6 corners rounded using quadratic bezier curves
+        // r=15 corner radius, viewBox 260x300, center at 130,150
+        svgBg.innerHTML = `<path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />`;
         cardEl.appendChild(svgBg);
 
         // Use server order exactly - no client-side shuffling
@@ -717,7 +724,7 @@ function renderBoard(serverCards, isSpectator = false) {
             const commonSymbolObj = SYMBOLS.find(s => s.id === commonSymbol);
             if (commonSymbolObj) {
                 const [col, row] = commonSymbolObj.sprite;
-                const stickerSize = 15; // Even smaller circle sticker
+                const stickerSize = 10; // Small circle sticker
                 const scaleFactor = stickerSize / SPRITE_CELL_SIZE;
 
                 const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
@@ -744,7 +751,7 @@ function renderBoard(serverCards, isSpectator = false) {
                         background-position: center;
                         border-radius: 50%;
                         background-color: white;
-                        filter: grayscale(100%) opacity(0.3);
+                        filter: grayscale(100%) opacity(0.2);
                     "></div>
                 `;
                 cardEl.appendChild(sticker);
@@ -797,10 +804,12 @@ function handleWinner(data) {
         if (isWinner) {
             // I WON! - cards already have 'correct' class from click
             msgTitle.innerHTML = `${winnerAvatar} You Won!`;
+            msgEl.classList.remove('lost');
         } else {
             // OPPONENT WON - show red border immediately with symbol animation
             cards.forEach(c => c.classList.add('wrong'));
             msgTitle.innerHTML = `You lost!`;
+            msgEl.classList.add('lost');
         }
 
         // Delay showing modal so players can see the symbol animation
@@ -865,11 +874,13 @@ function handleWrongGuess(data) {
             cards.forEach(c => c.classList.add('wrong'));
             msgTitle.innerText = "You Lost - WRONG!";
             msgBody.innerText = "Opponent wins the point!";
+            msgEl.classList.add('lost');
         } else {
             // Opponent guessed wrong - I win!
             cards.forEach(c => c.classList.add('correct'));
             msgTitle.innerText = "You Win!";
             msgBody.innerText = "Opponent guessed wrong!";
+            msgEl.classList.remove('lost');
         }
 
         // Multiplayer mode - show overlay with countdown
