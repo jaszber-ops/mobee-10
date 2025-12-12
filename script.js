@@ -812,20 +812,21 @@ function renderBoard(serverCards, isSpectator = false) {
             symbolGroups.forEach(groupEl => {
                 const symbolId = parseInt(groupEl.getAttribute('data-symbol-id'));
 
-                // Use CSS classes for hover/press animations (CSS transition animates these)
-                groupEl.onmouseenter = () => groupEl.classList.add("is-hover");
-                groupEl.onmouseleave = () => groupEl.classList.remove("is-hover");
+                // Use CSS classes for hover/press/wobble animations
+                groupEl.addEventListener("pointerenter", () => groupEl.classList.add("hover"));
+                groupEl.addEventListener("pointerleave", () => groupEl.classList.remove("hover"));
 
-                groupEl.onpointerdown = (e) => {
-                    e.stopPropagation();
+                groupEl.addEventListener("pointerdown", (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
 
-                    // Press feedback via CSS class
-                    groupEl.classList.add("is-press");
-                    setTimeout(() => {
-                        groupEl.classList.remove("is-press");
-                        groupEl.classList.add("is-hover");
-                    }, 60);
+                    // Press feedback
+                    groupEl.classList.add("press");
+                    setTimeout(() => groupEl.classList.remove("press"), 80);
+
+                    // Wobble animation
+                    groupEl.classList.add("wobble");
+                    setTimeout(() => groupEl.classList.remove("wobble"), 180);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
