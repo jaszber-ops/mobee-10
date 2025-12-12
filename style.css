@@ -10,7 +10,7 @@
     --card-border-width: 10px;
     --hex-height: 50%;
     --hex-width: 43.33%;
-    --spread-radius: 25.83%;
+    --spread-radius: 28%;
 }
 
 body {
@@ -77,8 +77,8 @@ header {
 
 #game-board {
     position: relative;
-    width: 500px;
-    height: 500px;
+    width: 600px;
+    height: 600px;
     transform-origin: center center;
     z-index: 30;
     overflow: visible;

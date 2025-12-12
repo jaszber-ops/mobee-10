@@ -614,7 +614,7 @@ conn.addEventListener("message", (event) => {
 const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
 
 // Scale the game board to fit available space
-const BASE_BOARD_SIZE = 500; // Fixed base size in pixels
+const BASE_BOARD_SIZE = 600; // Fixed base size in pixels
 
 function scaleGameBoard() {
     const container = document.getElementById('board-container');
@@ -623,13 +623,13 @@ function scaleGameBoard() {
 
     // Get available space (accounting for header and footer)
     const containerRect = container.getBoundingClientRect();
-    const availableWidth = containerRect.width * 0.95; // 95% of container width
-    const availableHeight = containerRect.height * 0.95; // 95% of container height
+    const availableWidth = containerRect.width;
+    const availableHeight = containerRect.height;
 
     // Use the smaller dimension to maintain aspect ratio
     const availableSize = Math.min(availableWidth, availableHeight);
 
-    // Calculate scale factor
+    // Calculate scale factor - fill available space
     const scale = availableSize / BASE_BOARD_SIZE;
 
     // Apply scale transform
