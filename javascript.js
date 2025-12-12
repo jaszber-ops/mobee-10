@@ -7,21 +7,25 @@ import { VERSION } from './version.js';
 // Using sprite coordinates [col, row] from mobee_sprite.svg (0-indexed)
 // User provided 1-indexed coordinates: row_col, converted to 0-indexed [col-1, row-1]
 const SYMBOLS = [
-    { id: 0,  name: 'Helicopter', sprite: [5, 2] },   // 3_6 → col 6-1=5, row 3-1=2
-    { id: 1,  name: 'UFO',        sprite: [4, 3] },   // 4_5 → col 5-1=4, row 4-1=3
-    { id: 2,  name: 'Shark',      sprite: [11, 4] },  // 5_12 → col 12-1=11, row 5-1=4
-    { id: 3,  name: 'Pig',        sprite: [10, 9] },  // 10_11 → col 11-1=10, row 10-1=9
-    { id: 4,  name: 'Rhino',      sprite: [7, 9] },   // 10_8 → col 8-1=7, row 10-1=9
-    { id: 5,  name: 'Pretzel',    sprite: [8, 7] },   // 8_9 → col 9-1=8, row 8-1=7
-    { id: 6,  name: 'Shoe',       sprite: [3, 0] },   // 1_4 → col 4-1=3, row 1-1=0
-    { id: 7,  name: 'Sunglasses', sprite: [12, 1] },  // 2_13 → col 13-1=12, row 2-1=1
-    { id: 8,  name: 'Star',       sprite: [8, 9] },   // 10_9 → col 9-1=8, row 10-1=9
-    { id: 9,  name: 'Elephant',   sprite: [12, 7] },  // 8_13 → col 13-1=12, row 8-1=7
-    { id: 10, name: 'Lion',       sprite: [0, 3] },   // 4_1 → col 1-1=0, row 4-1=3
-    { id: 11, name: 'Sailboat',   sprite: [5, 6] },   // 7_6 → col 6-1=5, row 7-1=6
-    { id: 12, name: 'Cat',        sprite: [9, 9] },   // 10_10 → col 10-1=9, row 10-1=9
-    { id: 13, name: 'Dog',        sprite: [7, 8] }    // 9_8 → col 8-1=7, row 9-1=8
+  { id: 0,  name: 'Helicopter', img: 'assets/symbols/helicopter.png', sprite: [5, 2] },
+  { id: 1,  name: 'UFO',        img: 'assets/symbols/ufo.png',        sprite: [4, 3] },
+  { id: 2,  name: 'Shark',      img: 'assets/symbols/shark.png',      sprite: [11, 4] },
+  { id: 3,  name: 'Pig',        img: 'assets/symbols/pig.png',        sprite: [10, 9] },
+  { id: 4,  name: 'Rhino',      img: 'assets/symbols/rhino.png',      sprite: [7, 9] },
+  { id: 5,  name: 'Pretzel',    img: 'assets/symbols/pretzel.png',    sprite: [8, 7] },
+  { id: 6,  name: 'Shoe',       img: 'assets/symbols/shoe.png',       sprite: [3, 0] },
+  { id: 7,  name: 'Sunglasses', img: 'assets/symbols/sunglasses.png', sprite: [12, 1] },
+  { id: 8,  name: 'Star',       img: 'assets/symbols/star.png',       sprite: [8, 9] },
+  { id: 9,  name: 'Elephant',   img: 'assets/symbols/elephant.png',   sprite: [12, 7] },
+  { id: 10, name: 'Lion',       img: 'assets/symbols/lion.png',       sprite: [0, 3] },
+  { id: 11, name: 'Sailboat',   img: 'assets/symbols/sailboat.png',   sprite: [5, 6] },
+  { id: 12, name: 'Cat',        img: 'assets/symbols/cat.png',        sprite: [9, 9] },
+  { id: 13, name: 'Dog',        img: 'assets/symbols/dog.png',        sprite: [7, 8] }
 ];
+
+// Preload gameplay PNG symbols to avoid first-round pop-in
+SYMBOLS.forEach(s => { if (s.img) { const im = new Image(); im.src = s.img; } });
+
 
 // SVG sprite sheet parameters
 const SPRITE_SVG_URL = 'assets/mobee_sprite.svg';
@@ -635,12 +639,6 @@ function scaleGameBoard() {
     const board = document.getElementById('game-board');
     if (!container || !board) return;
 
-    // iPhone: let CSS size the board, do not transform-scale (prevents gutters)
-    if (window.matchMedia('(max-width: 430px)').matches) {
-        board.style.transform = '';
-        return;
-    }
-
     // Get available space
     const containerRect = container.getBoundingClientRect();
     const availableWidth = containerRect.width;
@@ -729,38 +727,11 @@ function renderBoard(serverCards, isSpectator = false) {
                     ">
                 `;
             } else {
-                // Calculate sprite position (same approach as avatar rendering)
-                const [col, row] = symbolObj.sprite;
-
-                // Use pixel-based sizing, CSS will scale the container
-                const displaySize = 66; // Base size in pixels
-                const scaleFactor = displaySize / SPRITE_CELL_SIZE;
-
-                const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
-                const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
-
-                const bgX = -(cellLeft * scaleFactor);
-                const bgY = -(cellTop * scaleFactor);
-
-                const svgWidth = 841.89;
-                const svgHeight = 595.28;
-                const bgWidth = svgWidth * scaleFactor;
-                const bgHeight = svgHeight * scaleFactor;
-
-                // Create sprite div - uses fixed pixels but container scales via CSS
+                // Gameplay symbols: use pre-rendered PNGs (more robust on iPhone/Safari)
                 symContainer.innerHTML = `
-                    <div class="symbol-sprite" style="
-                        width: ${displaySize}px;
-                        height: ${displaySize}px;
-                        background-image: url('${SPRITE_SVG_URL}');
-                        background-size: ${bgWidth}px ${bgHeight}px;
-                        background-position: ${bgX}px ${bgY}px;
-                        background-repeat: no-repeat;
-                        pointer-events: none;
-                        transition: transform 0.2s;
-                    "></div>
+                    <img class="game-symbol" src="${symbolObj.img}" alt="" draggable="false">
                 `;
-            }
+}
 
             // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
             // Only enable clicks if NOT in spectator mode
@@ -778,7 +749,7 @@ function renderBoard(serverCards, isSpectator = false) {
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
                     // Vibrate all matching symbols across all cards (apply to inner sprite div)
-                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolId}"] > div`).forEach(sprite => {
+                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolId}"] img, .symbol-container[data-symbol-id="${symbolId}"] .symbol-sprite`).forEach(sprite => {
                         sprite.classList.add('symbol-match');
                         setTimeout(() => sprite.classList.remove('symbol-match'), 500);
                     });
@@ -870,7 +841,7 @@ function handleWinner(data) {
 
     // Animate the winning symbol on all cards for all players
     if (data.winningSymbol !== undefined) {
-        document.querySelectorAll(`.symbol-container[data-symbol-id="${data.winningSymbol}"] > div`).forEach(sprite => {
+        document.querySelectorAll(`.symbol-container[data-symbol-id="${data.winningSymbol}"] img, .symbol-container[data-symbol-id="${data.winningSymbol}"] .symbol-sprite`).forEach(sprite => {
             sprite.classList.add('symbol-match');
             setTimeout(() => sprite.classList.remove('symbol-match'), 500);
         });

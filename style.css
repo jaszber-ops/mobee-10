@@ -15,7 +15,6 @@ html, body { margin: 0; padding: 0; }
     --hex-height: 50%;
     --hex-width: 43.33%;
     --spread-radius: 25.5%;
-    --symbol-scale: 1;
 }
 
 body {
@@ -157,7 +156,7 @@ header {
 
 .symbol-container {
     position: absolute;
-    width: calc(34% * var(--symbol-scale));
+    width: 34%;
     aspect-ratio: 1 / 1;
     height: auto;
     display: flex;
@@ -175,7 +174,16 @@ header {
     height: 100%;
     object-fit: contain;
     transition: transform 0.2s;
-    mix-blend-mode: multiply;
+    mix-blend-mode: normal;
+}
+
+/* Gameplay PNG symbols */
+.game-symbol {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    image-rendering: auto;
 }
 
 /* Scale symbol sprites to fill container */
@@ -531,17 +539,10 @@ button:active { transform: scale(0.95); }
 
 /* iPhone-specific: full-bleed layout */
 @media (max-width: 430px) {
-    /* iPhone-specific variable overrides */
+    /* UI height variables for board sizing */
     :root {
-        --ui-top: 140px;           /* header/controls above board */
-        --ui-bottom: 0px;          /* footer hidden during play */
-        --symbol-scale: 0.70;      /* smaller symbols on iPhone */
-        --card-border-width: 5px;  /* lighter border at small sizes */
-        --spread-radius: 24%;      /* tighter card spacing */
-    }
-
-    body {
-        min-height: 100svh;
+        --ui-top: 120px;     /* header/controls above board */
+        --ui-bottom: 24px;   /* footer space */
     }
 
     /* Full-bleed board container */
@@ -551,9 +552,9 @@ button:active { transform: scale(0.95); }
         padding: 0 !important;
     }
 
-    /* Square board: use available height with safe area insets */
+    /* Square board: use available height, allow full width */
     #game-board {
-        --availH: calc(100svh - var(--ui-top) - var(--ui-bottom) - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        --availH: calc(100svh - var(--ui-top) - var(--ui-bottom));
         width: min(100vw, var(--availH)) !important;
         height: min(100vw, var(--availH)) !important;
         margin: 0 auto !important;
