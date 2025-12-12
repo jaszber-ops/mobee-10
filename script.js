@@ -613,6 +613,37 @@ conn.addEventListener("message", (event) => {
 // serverCards is: [[0,1,2,3,4,5,6], [0,7,8...], ...]
 const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
 
+// Scale the game board to fit available space
+const BASE_BOARD_SIZE = 500; // Fixed base size in pixels
+
+function scaleGameBoard() {
+    const container = document.getElementById('board-container');
+    const board = document.getElementById('game-board');
+    if (!container || !board) return;
+
+    // Get available space (accounting for header and footer)
+    const containerRect = container.getBoundingClientRect();
+    const availableWidth = containerRect.width * 0.95; // 95% of container width
+    const availableHeight = containerRect.height * 0.95; // 95% of container height
+
+    // Use the smaller dimension to maintain aspect ratio
+    const availableSize = Math.min(availableWidth, availableHeight);
+
+    // Calculate scale factor
+    const scale = availableSize / BASE_BOARD_SIZE;
+
+    // Apply scale transform
+    board.style.transform = `scale(${scale})`;
+}
+
+// Scale on load and resize
+window.addEventListener('resize', scaleGameBoard);
+window.addEventListener('orientationchange', () => {
+    setTimeout(scaleGameBoard, 100); // Delay for orientation change
+});
+// Initial scale after DOM is ready
+setTimeout(scaleGameBoard, 100);
+
 function renderBoard(serverCards, isSpectator = false) {
     console.log("renderBoard called with:", serverCards, "spectator:", isSpectator);
 
@@ -787,6 +818,9 @@ function renderBoard(serverCards, isSpectator = false) {
 
         boardEl.appendChild(cardEl);
     });
+
+    // Scale board after rendering
+    scaleGameBoard();
 }
 
 function handleWinner(data) {
