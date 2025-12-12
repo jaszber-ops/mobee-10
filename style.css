@@ -559,6 +559,9 @@ button:active { transform: scale(0.95); }
     .stats { font-size: 1.05rem; gap: 16px; }
     .logo-img { max-height: 10svh; }
 
+    /* Smaller symbols on iPhone (20% smaller than 34% = 27.2%) */
+    .symbol-container { width: 27%; }
+
     /* Hide footer during gameplay to maximize play area */
     body.playing .footer-link { display: none; }
 }
