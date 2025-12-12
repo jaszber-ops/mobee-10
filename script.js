@@ -838,6 +838,19 @@ function renderBoard(serverCards, isSpectator = false) {
             });
         }
 
+        // Add small Møbee logo sticker at bottom of card
+        const sticker = document.createElement('div');
+        sticker.className = 'card-logo-sticker';
+        sticker.innerHTML = `
+            <img src="assets/mobee_logo_sm.png" alt="" style="
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                filter: grayscale(100%) opacity(0.25);
+            ">
+        `;
+        cardEl.appendChild(sticker);
+
         boardEl.appendChild(cardEl);
     });
 

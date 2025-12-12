@@ -140,6 +140,19 @@ header {
     display: block;
 }
 
+/* Small Møbee logo sticker at bottom of card */
+.card-logo-sticker {
+    position: absolute;
+    bottom: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    pointer-events: none;
+    z-index: 5;
+}
+
 /* Symbol click targets within SVG */
 .card-symbol {
     cursor: pointer;
