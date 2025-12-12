@@ -8,9 +8,9 @@
     --error: #E6A07F;
     --card-border-color: #f7f9d2;
     --card-border-width: 10px;
-    --hex-height: 50%;
-    --hex-width: 43.33%;
-    --spread-radius: 30%;
+    --hex-height: 55%;
+    --hex-width: 47.5%;
+    --spread-radius: 26%;
 }
 
 body {
