@@ -160,24 +160,7 @@ header {
     cursor: pointer;
     transform-box: fill-box;
     transform-origin: center;
-    transition: transform 120ms ease;
-}
-.symbol-group.hover {
-    transform: scale(1.12);
-}
-.symbol-group.press {
-    transform: scale(0.92);
-}
-.symbol-group.wobble {
-    animation: wobble 160ms ease-in-out;
-}
-
-@keyframes wobble {
-    0% { transform: scale(1.12) rotate(0deg); }
-    25% { transform: scale(1.12) rotate(-4deg); }
-    50% { transform: scale(1.12) rotate(4deg); }
-    75% { transform: scale(1.12) rotate(-3deg); }
-    100% { transform: scale(1.12) rotate(0deg); }
+    transition: transform 0.15s ease;
 }
 
 #message {

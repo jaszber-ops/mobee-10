@@ -234,13 +234,6 @@ window.requestStartGame = function() {
 
 function setupConnectionHandlers() {
 
-// UI Elements - must be declared before event handlers that use them
-const boardEl = document.getElementById('game-board');
-const scoreEl = document.getElementById('score-el');
-const msgEl = document.getElementById('message');
-const msgTitle = document.getElementById('msg-title');
-const msgBody = document.getElementById('msg-body');
-
 // Connection Feedback & Room Sharing
 conn.addEventListener("open", () => {
     console.log("Connected to room:", roomCode);
@@ -266,6 +259,13 @@ conn.addEventListener("open", () => {
     msgEl.classList.remove('lost');
     msgEl.style.display = 'block';
 });
+
+// UI Elements
+const boardEl = document.getElementById('game-board');
+const scoreEl = document.getElementById('score-el');
+const msgEl = document.getElementById('message');
+const msgTitle = document.getElementById('msg-title');
+const msgBody = document.getElementById('msg-body');
 
 // Game Timer
 let gameStartTime = null;
@@ -679,15 +679,10 @@ function initSymbolDefs() {
     const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
     const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
 
-    // Each symbol: viewBox starts at (0,0), and we move the big sprite behind it
-    // This keeps every symbol's local coords stable
+    // Each symbol is defined with its own viewBox matching the sprite cell
     defsHTML += `
-      <symbol id="sym-${symbolObj.id}" viewBox="0 0 ${SPRITE_CELL_SIZE} ${SPRITE_CELL_SIZE}">
-        <image href="${SPRITE_SVG_URL}"
-               x="${-cellLeft}"
-               y="${-cellTop}"
-               width="841.89"
-               height="595.28" />
+      <symbol id="sym-${symbolObj.id}" viewBox="${cellLeft} ${cellTop} ${SPRITE_CELL_SIZE} ${SPRITE_CELL_SIZE}">
+        <image href="${SPRITE_SVG_URL}" width="841.89" height="595.28" />
       </symbol>
     `;
   });
@@ -811,22 +806,28 @@ function renderBoard(serverCards, isSpectator = false) {
             const symbolGroups = cardEl.querySelectorAll('.symbol-group');
             symbolGroups.forEach(groupEl => {
                 const symbolId = parseInt(groupEl.getAttribute('data-symbol-id'));
+                const cx = parseFloat(groupEl.dataset.cx);
+                const cy = parseFloat(groupEl.dataset.cy);
+                const rot = parseFloat(groupEl.dataset.rotation || "0");
 
-                // Use CSS classes for hover/press/wobble animations
-                groupEl.addEventListener("pointerenter", () => groupEl.classList.add("hover"));
-                groupEl.addEventListener("pointerleave", () => groupEl.classList.remove("hover"));
+                // Helper to set SVG transform with scale around symbol center
+                function setGroupTransform(scale) {
+                    groupEl.setAttribute(
+                        "transform",
+                        `translate(${cx} ${cy}) rotate(${rot}) scale(${scale}) translate(${-cx} ${-cy})`
+                    );
+                }
 
-                groupEl.addEventListener("pointerdown", (e) => {
-                    e.preventDefault();
+                groupEl.onmouseenter = () => setGroupTransform(1.15);
+                groupEl.onmouseleave = () => setGroupTransform(1.0);
+
+                groupEl.onpointerdown = (e) => {
                     e.stopPropagation();
+                    e.preventDefault();
 
-                    // Press feedback
-                    groupEl.classList.add("press");
-                    setTimeout(() => groupEl.classList.remove("press"), 80);
-
-                    // Wobble animation
-                    groupEl.classList.add("wobble");
-                    setTimeout(() => groupEl.classList.remove("wobble"), 180);
+                    // Small press feedback
+                    setGroupTransform(0.92);
+                    setTimeout(() => setGroupTransform(1.15), 60);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
