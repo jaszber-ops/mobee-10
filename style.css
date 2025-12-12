@@ -10,7 +10,7 @@
     --card-border-width: 10px;
     --hex-height: 50%;
     --hex-width: 43.33%;
-    --spread-radius: 32%;
+    --spread-radius: 30%;
 }
 
 body {
@@ -66,13 +66,14 @@ header {
 }
 
 #board-container {
-    flex-grow: 1;
+    flex: 1;
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: visible;
+    overflow: hidden;
     position: relative;
+    min-height: 0;
 }
 
 #game-board {
@@ -513,15 +514,6 @@ button:active { transform: scale(0.95); }
     border: 4px solid #F9CE79;
     width: 80%;
     max-width: 400px;
-}
-
-/* Mobile layout fixes */
-@media (max-width: 700px) {
-    /* Move cards up closer to timer, away from footer */
-    #board-container {
-        align-items: flex-start;
-        padding-top: 2vh;
-    }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {

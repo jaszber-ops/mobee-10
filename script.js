@@ -621,19 +621,21 @@ function scaleGameBoard() {
     const board = document.getElementById('game-board');
     if (!container || !board) return;
 
-    // Get available space (accounting for header and footer)
+    // Get available space
     const containerRect = container.getBoundingClientRect();
     const availableWidth = containerRect.width;
     const availableHeight = containerRect.height;
 
-    // Use the smaller dimension to maintain aspect ratio
-    const availableSize = Math.min(availableWidth, availableHeight);
+    // Use the smaller dimension to maintain aspect ratio, with some padding
+    const availableSize = Math.min(availableWidth, availableHeight) * 0.95;
 
-    // Calculate scale factor - fill available space
+    // Calculate scale factor
     const scale = availableSize / BASE_BOARD_SIZE;
 
     // Apply scale transform
     board.style.transform = `scale(${scale})`;
+
+    console.log('scaleGameBoard:', { availableWidth, availableHeight, availableSize, scale });
 }
 
 // Scale on load and resize
