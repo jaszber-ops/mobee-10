@@ -679,10 +679,15 @@ function initSymbolDefs() {
     const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
     const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
 
-    // Each symbol is defined with its own viewBox matching the sprite cell
+    // Each symbol: viewBox starts at (0,0), and we move the big sprite behind it
+    // This keeps every symbol's local coords stable
     defsHTML += `
-      <symbol id="sym-${symbolObj.id}" viewBox="${cellLeft} ${cellTop} ${SPRITE_CELL_SIZE} ${SPRITE_CELL_SIZE}">
-        <image href="${SPRITE_SVG_URL}" width="841.89" height="595.28" />
+      <symbol id="sym-${symbolObj.id}" viewBox="0 0 ${SPRITE_CELL_SIZE} ${SPRITE_CELL_SIZE}">
+        <image href="${SPRITE_SVG_URL}"
+               x="${-cellLeft}"
+               y="${-cellTop}"
+               width="841.89"
+               height="595.28" />
       </symbol>
     `;
   });
