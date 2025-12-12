@@ -535,7 +535,7 @@ button:active { transform: scale(0.95); }
     :root {
         --ui-top: 140px;           /* header/controls above board */
         --ui-bottom: 0px;          /* footer hidden during play */
-        --symbol-scale: 0.82;      /* smaller symbols on iPhone */
+        --symbol-scale: 0.70;      /* smaller symbols on iPhone */
         --card-border-width: 5px;  /* lighter border at small sizes */
         --spread-radius: 24%;      /* tighter card spacing */
     }
