@@ -252,7 +252,8 @@ export default class MobeeServer {
           }
 
           currentState.gameStartTime = Date.now();
-          console.log("Game timer started fresh at 60 seconds!");
+          currentState.gameEndsAt = Date.now() + 60000;
+          console.log("Game timer started fresh at 60 seconds! Ends at:", currentState.gameEndsAt);
 
           // Reset all scores to 0 at game start
           currentState.scores = Object.fromEntries(
@@ -264,6 +265,26 @@ export default class MobeeServer {
           currentState.shuffledDeckOrder = null;
 
           await this.startNewRound(currentState);
+
+          // Schedule server-side game end
+          const gameStartTime = currentState.gameStartTime;
+          setTimeout(async () => {
+            const endState = await this.party.storage.get("gamestate");
+            // Only end if this is still the same game
+            if (endState.gameStartTime === gameStartTime) {
+              console.log("Server forcing END_GAME (60s timeout)");
+              endState.gameStartTime = null;
+              endState.gameEndsAt = null;
+              endState.status = "waiting";
+              await this.party.storage.put("gamestate", endState);
+
+              this.party.broadcast(JSON.stringify({
+                type: "GAME_OVER",
+                scores: endState.scores,
+                avatars: endState.avatars
+              }));
+            }
+          }, 60000);
         }, 3000);
       } else {
         // Mid-game start (shouldn't normally happen)
@@ -298,6 +319,22 @@ export default class MobeeServer {
 
     if (data.type === "GUESS") {
       if (state.status !== "playing") return;
+
+      // Check if game time has expired
+      if (state.gameEndsAt && Date.now() > state.gameEndsAt) {
+        console.log("GUESS received but game time expired, forcing END_GAME");
+        state.gameStartTime = null;
+        state.gameEndsAt = null;
+        state.status = "waiting";
+        await this.party.storage.put("gamestate", state);
+
+        this.party.broadcast(JSON.stringify({
+          type: "GAME_OVER",
+          scores: state.scores,
+          avatars: state.avatars
+        }));
+        return;
+      }
 
       const guesser = sender.playerId;
 
