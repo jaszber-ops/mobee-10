@@ -146,10 +146,10 @@ header {
 /* Small Møbee logo sticker at bottom of card */
 .card-logo-sticker {
     position: absolute;
-    bottom: 12%;
+    bottom: 5%;
     left: 50%;
     transform: translateX(-50%);
-    width: 10%;
+    width: 6%;
     aspect-ratio: 1 / 1;
     pointer-events: none;
     z-index: 10;
