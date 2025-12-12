@@ -167,11 +167,18 @@ export default class MobeeServer {
     }
 
     // Send current game state to the connecting player
-    // Only spectate if: (1) game is playing AND (2) this is a NEW player joining mid-game AND (3) there are other players
     const playerCount = Object.keys(state.scores).length;
-    const shouldSpectate = state.status === "playing" && state.currentShuffledCards && !isReturningPlayer && playerCount > 1;
 
-    if (shouldSpectate) {
+    if (state.status === "countdown") {
+      // Game is in countdown - show countdown to joining player too
+      console.log("Player joining during countdown");
+      conn.send(JSON.stringify({
+        type: "GAME_STARTING",
+        countdown: 3, // They'll see remaining countdown
+        scores: state.scores,
+        avatars: state.avatars
+      }));
+    } else if (state.status === "playing" && state.currentShuffledCards && !isReturningPlayer && playerCount > 1) {
       // New player joining mid-game with other players - send them as spectator
       console.log("New player joining mid-game with", playerCount, "total players - spectating");
       conn.send(JSON.stringify({
@@ -206,26 +213,57 @@ export default class MobeeServer {
     let state = await this.party.storage.get("gamestate");
 
     if (data.type === "START_GAME") {
-      console.log("Starting new round...");
+      console.log("Starting new game...");
 
       // If we're starting from lobby (status is waiting), always start a fresh 60-second game
       const isNewGame = !state.gameStartTime || state.status === "waiting";
 
       if (isNewGame) {
-        state.gameStartTime = Date.now();
-        console.log("Game timer started fresh at 60 seconds!");
+        // Mark that countdown is in progress to prevent multiple starts
+        if (state.status === "countdown") {
+          console.log("Countdown already in progress, ignoring START_GAME");
+          return;
+        }
 
-        // Reset all scores to 0 at game start
-        state.scores = Object.fromEntries(
-          Object.keys(state.scores).map(id => [id, 0])
-        );
+        state.status = "countdown";
+        await this.party.storage.put("gamestate", state);
 
-        // Reset deck position to start fresh with a new shuffle
-        state.deckPositionIndex = null;
-        state.shuffledDeckOrder = null;
+        // Broadcast countdown start to all players
+        this.party.broadcast(JSON.stringify({
+          type: "GAME_STARTING",
+          countdown: 3,
+          scores: state.scores,
+          avatars: state.avatars
+        }));
+
+        // After 3 seconds, actually start the game
+        setTimeout(async () => {
+          let currentState = await this.party.storage.get("gamestate");
+
+          // Only proceed if still in countdown (game wasn't reset)
+          if (currentState.status !== "countdown") {
+            console.log("Countdown interrupted, not starting game");
+            return;
+          }
+
+          currentState.gameStartTime = Date.now();
+          console.log("Game timer started fresh at 60 seconds!");
+
+          // Reset all scores to 0 at game start
+          currentState.scores = Object.fromEntries(
+            Object.keys(currentState.scores).map(id => [id, 0])
+          );
+
+          // Reset deck position to start fresh with a new shuffle
+          currentState.deckPositionIndex = null;
+          currentState.shuffledDeckOrder = null;
+
+          await this.startNewRound(currentState);
+        }, 3000);
+      } else {
+        // Mid-game start (shouldn't normally happen)
+        await this.startNewRound(state);
       }
-
-      await this.startNewRound(state);
     }
 
     if (data.type === "END_GAME") {

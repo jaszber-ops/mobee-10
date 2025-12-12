@@ -527,6 +527,36 @@ conn.addEventListener("message", (event) => {
                 startGameTimer();
             }
             break;
+
+        case "GAME_STARTING":
+            // Game is about to start - show countdown
+            console.log("Game starting countdown!");
+
+            // Update scoreboard with current players
+            updateScoreboard(data.scores, data.avatars);
+
+            // Hide start button and show countdown
+            const startBtn = msgEl.querySelector('button');
+            startBtn.style.display = 'none';
+
+            msgTitle.innerText = "Get Ready!";
+            msgEl.style.display = 'block';
+
+            // Start countdown from 3
+            let startCountdown = data.countdown || 3;
+            msgBody.innerHTML = `<div class="countdown-number">${startCountdown}</div>`;
+
+            const startCountdownInterval = setInterval(() => {
+                startCountdown--;
+                if (startCountdown > 0) {
+                    msgBody.innerHTML = `<div class="countdown-number">${startCountdown}</div>`;
+                } else {
+                    clearInterval(startCountdownInterval);
+                    msgBody.innerHTML = "GO!";
+                    // Server will send NEW_ROUND shortly
+                }
+            }, 1000);
+            break;
     }
 });
 
