@@ -874,9 +874,9 @@ function handleWinner(data) {
 
     // Animate the winning symbol on all cards for all players
     if (data.winningSymbol !== undefined) {
-        document.querySelectorAll(`.symbol-container[data-symbol-id="${data.winningSymbol}"] > div`).forEach(sprite => {
-            sprite.classList.add('symbol-match');
-            setTimeout(() => sprite.classList.remove('symbol-match'), 500);
+        document.querySelectorAll(`.card-symbol[data-symbol-id="${data.winningSymbol}"]`).forEach(sym => {
+            sym.classList.add('symbol-match');
+            setTimeout(() => sym.classList.remove('symbol-match'), 500);
         });
     }
 
