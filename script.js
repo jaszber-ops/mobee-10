@@ -629,12 +629,12 @@ conn.addEventListener("message", (event) => {
 // Symbol positions in SVG viewBox coordinates (0-100 space)
 const SYMBOL_POSITIONS = [
   { x: 50, y: 57.5 }, // center
-  { x: 50, y: 31.5 },
-  { x: 73, y: 44.5 },
-  { x: 73, y: 70.5 },
-  { x: 50, y: 83.5 },
-  { x: 27, y: 70.5 },
-  { x: 27, y: 44.5 },
+  { x: 50, y: 24 },   // top
+  { x: 78, y: 40 },   // top-right
+  { x: 78, y: 75 },   // bottom-right
+  { x: 50, y: 91 },   // bottom
+  { x: 22, y: 75 },   // bottom-left
+  { x: 22, y: 40 },   // top-left
 ];
 
 // Rotations for each symbol position (degrees)
