@@ -560,7 +560,7 @@ button:active { transform: scale(0.95); }
     .logo-img { max-height: 10svh; }
 
     /* Smaller symbols on iPhone */
-    .symbol-container { width: 70%; }
+    .symbol-container { width: 80%; }
 
     /* Hide footer during gameplay to maximize play area */
     body.playing .footer-link { display: none; }
