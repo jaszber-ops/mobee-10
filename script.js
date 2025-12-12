@@ -644,24 +644,23 @@ const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
 const SYMBOL_SIZE = 26;
 
 // Rounded hexagon path for viewBox 0 0 100 115
-// 6-way symmetric hexagon with all corners equally rounded
-// Center at (50, 57.5), radius ~50, corner radius ~8
+// 6-way symmetric hexagon with subtle corner rounding
 const HEX_PATH = `
-  M 50 8
-  Q 58 8 62 12
-  L 88 32
-  Q 94 36 94 44
-  L 94 71
-  Q 94 79 88 83
-  L 62 103
-  Q 58 107 50 107
-  Q 42 107 38 103
-  L 12 83
-  Q 6 79 6 71
-  L 6 44
-  Q 6 36 12 32
-  L 38 12
-  Q 42 8 50 8
+  M 50 5
+  Q 54 5 56 7
+  L 90 30
+  Q 95 33 95 38
+  L 95 77
+  Q 95 82 90 85
+  L 56 108
+  Q 54 110 50 110
+  Q 46 110 44 108
+  L 10 85
+  Q 5 82 5 77
+  L 5 38
+  Q 5 33 10 30
+  L 44 7
+  Q 46 5 50 5
   Z
 `.replace(/\s+/g, ' ').trim();
 
