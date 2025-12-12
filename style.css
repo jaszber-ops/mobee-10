@@ -178,15 +178,19 @@ button {
     background: #BEC887;
     color: white;
     border: none;
-    padding: 15px 30px;
-    font-size: 1.2rem;
-    border-radius: 30px;
+    padding: 14px 24px;
+    font-size: 1rem;
+    border-radius: 12px;
     cursor: pointer;
     margin: 20px auto 0 auto;
     font-weight: 600;
     display: block;
+    width: 100%;
+    font-family: 'Poppins', sans-serif;
+    transition: background 0.2s, transform 0.1s;
 }
-button:active { transform: scale(0.95); }
+button:hover { background: #a8b275; }
+button:active { transform: scale(0.97); }
 
 @keyframes pulse {
     0% { transform: translate(-50%, -50%) scale(1); }
@@ -364,33 +368,39 @@ button:active { transform: scale(0.95); }
 .buy-btn {
     background: #4a90e2;
     color: white;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 14px 24px;
+    border-radius: 12px;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 600;
     font-size: 1rem;
     display: block;
     border: none;
     cursor: pointer;
-    transition: background 0.2s;
+    width: 100%;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    transition: background 0.2s, transform 0.1s;
 }
 
-.buy-btn:hover {
-    background: #357abd;
-}
+.buy-btn:hover { background: #357abd; }
+.buy-btn:active { transform: scale(0.97); }
 
 .stay-btn {
     background: #BEC887;
     border: none;
     color: white;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: bold;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-weight: 600;
     font-size: 1rem;
     font-family: 'Poppins', sans-serif;
     cursor: pointer;
     width: 100%;
+    transition: background 0.2s, transform 0.1s;
 }
+
+.stay-btn:hover { background: #a8b275; }
+.stay-btn:active { transform: scale(0.97); }
 
 /* Avatar sprites */
 .avatar-sprite {
