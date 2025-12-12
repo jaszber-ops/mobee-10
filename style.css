@@ -158,13 +158,6 @@ header {
 /* Symbol groups within SVG */
 .symbol-group {
     cursor: pointer;
-    transition: transform 0.15s ease;
-}
-
-@media (hover: hover) {
-    .symbol-group:hover {
-        transform: scale(1.15);
-    }
 }
 
 #message {

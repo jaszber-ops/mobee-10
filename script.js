@@ -808,6 +808,20 @@ function renderBoard(serverCards, isSpectator = false) {
             const symbolGroups = cardEl.querySelectorAll('.symbol-group');
             symbolGroups.forEach(groupEl => {
                 const symbolId = parseInt(groupEl.getAttribute('data-symbol-id'));
+                const rotation = groupEl.getAttribute('data-rotation');
+                const cx = groupEl.getAttribute('data-cx');
+                const cy = groupEl.getAttribute('data-cy');
+
+                // Build base transform (rotation if any)
+                const baseTransform = rotation !== '0' ? `rotate(${rotation} ${cx} ${cy})` : '';
+
+                // Hover handlers for scale effect
+                groupEl.onmouseenter = () => {
+                    groupEl.setAttribute('transform', baseTransform + ` translate(${cx}, ${cy}) scale(1.15) translate(-${cx}, -${cy})`);
+                };
+                groupEl.onmouseleave = () => {
+                    groupEl.setAttribute('transform', baseTransform);
+                };
 
                 groupEl.onpointerdown = (e) => {
                     e.stopPropagation();
