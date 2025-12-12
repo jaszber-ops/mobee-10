@@ -201,7 +201,10 @@ header {
 
 @media (hover: hover) {
     .symbol-container:hover { z-index: 20; }
-    .symbol-container:hover > div { transform: scale(1.3); }
+    .symbol-container:hover > div,
+    .symbol-container:hover > img {
+        transform: scale(1.3);
+    }
 }
 
 .pos-0 { top: 50%; left: 50%; }
@@ -462,6 +465,8 @@ a.stay-btn {
 
 .modal-content img {
     width: 100%;
+    height: auto;
+    display: block;
     border-radius: 10px;
     margin: 15px 0;
 }
@@ -471,6 +476,8 @@ a.stay-btn {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    height: auto;
+    object-fit: contain;
 }
 
 /* Keep the modal stack spacing consistent */
