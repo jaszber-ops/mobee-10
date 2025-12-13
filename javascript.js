@@ -327,8 +327,8 @@ function pauseTimer() {
 
 function resumeTimer() {
     if (pauseStartTime) {
-        // Add 1 second (1000ms) to give players a full second after resume
-        pausedTime += (Date.now() - pauseStartTime) + 1000;
+        // Add the actual pause duration (second boundary alignment already handled in pauseTimer)
+        pausedTime += (Date.now() - pauseStartTime);
         pauseStartTime = null;
         startGameTimer();
 
