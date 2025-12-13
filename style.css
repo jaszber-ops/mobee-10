@@ -699,20 +699,43 @@ a.stay-btn {
     font-weight: 600;
 }
 
-.lobby-entry {
+/* Lobby hero carousel */
+.lobby-hero {
+    margin-top: 10px;
+}
+
+.lobby-carousel {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 14px;
+    display: block;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Lobby action buttons */
+.lobby-actions {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     margin-top: 14px;
 }
 
-.lobby-entry .btn {
+.lobby-actions .btn {
     margin: 0;
     max-width: none;
     width: 100%;
 }
 
-#lobby-multiplayer .btn {
+@media (min-width: 500px) {
+    .lobby-actions {
+        flex-direction: row;
+    }
+}
+
+/* Friends section buttons */
+#friends-section .btn {
     margin: 10px 0;
     width: 100%;
     max-width: none;

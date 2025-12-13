@@ -319,8 +319,8 @@ const msgBody = document.getElementById('msg-body');
 
 // Lobby Elements
 const lobbyEl = document.getElementById('lobby');
-const lobbyEntryEl = document.getElementById('lobby-entry');
-const lobbyMultiplayerEl = document.getElementById('lobby-multiplayer');
+const lobbyActionsEl = document.getElementById('lobby-actions');
+const friendsSectionEl = document.getElementById('friends-section');
 const lobbyRoomCodeEl = document.getElementById('lobby-room-code');
 const lobbyPlayersEl = document.getElementById('lobby-players');
 const lobbyStartBtn = document.getElementById('lobby-start-btn');
@@ -383,6 +383,10 @@ function showLobby() {
     msgEl.style.display = 'none';
     lobbyRoomCodeEl.textContent = roomCode;
 
+    // Initialize carousel
+    currentCarouselIndex = Math.floor(Math.random() * totalCarouselImages);
+    updateCarouselImage();
+
     // Check if we joined via a room link (someone else's room)
     const urlParams = new URLSearchParams(window.location.search);
     const joinedViaLink = urlParams.has('room');
@@ -391,9 +395,9 @@ function showLobby() {
         // Joined someone's room - go straight to multiplayer view
         enterMultiplayerLobby();
     } else {
-        // Fresh start - show entry choice
-        lobbyEntryEl.style.display = 'flex';
-        lobbyMultiplayerEl.style.display = 'none';
+        // Fresh start - show actions, hide friends section
+        lobbyActionsEl.style.display = 'flex';
+        friendsSectionEl.style.display = 'none';
     }
 }
 
@@ -403,8 +407,7 @@ function hideLobby() {
 
 function enterMultiplayerLobby() {
     isMultiplayerMode = true;
-    lobbyEntryEl.style.display = 'none';
-    lobbyMultiplayerEl.style.display = 'block';
+    friendsSectionEl.style.display = 'block';
     lobbyRoomCodeEl.textContent = roomCode;
 }
 
@@ -1233,8 +1236,15 @@ window.closeShopModal = function() {
 }
 
 function updateCarouselImage() {
-    const img = document.getElementById('carousel-image');
-    img.src = `assets/mobee-box/mobee-box${currentCarouselIndex + 1}.jpg`;
+    const url = `assets/mobee-box/mobee-box${currentCarouselIndex + 1}.jpg`;
+
+    // Update shop modal carousel
+    const modalImg = document.getElementById('carousel-image');
+    if (modalImg) modalImg.src = url;
+
+    // Update lobby carousel
+    const lobbyImg = document.getElementById('lobby-carousel-image');
+    if (lobbyImg) lobbyImg.src = url;
 }
 
 window.handleImageClick = function(event) {
@@ -1304,6 +1314,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (versionDisplay) {
         versionDisplay.textContent = 'v' + VERSION;
     }
+
+    // Auto-advance lobby carousel every 3 seconds
+    setInterval(() => {
+        const lobbyEl = document.getElementById('lobby');
+        if (lobbyEl && lobbyEl.style.display !== 'none') {
+            currentCarouselIndex = (currentCarouselIndex + 1) % totalCarouselImages;
+            updateCarouselImage();
+        }
+    }, 3000);
 
     const inviteShareUrlInput = document.getElementById('invite-share-url');
     const inviteCopyHint = document.getElementById('invite-copy-hint');

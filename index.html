@@ -50,12 +50,17 @@
     <div class="lobby-card">
         <h2 id="lobby-title">Møbee</h2>
 
-        <div class="lobby-entry" id="lobby-entry">
-            <button id="play-solo-btn" class="btn btn-primary" onclick="handlePlaySolo()">Play Solo</button>
-            <button id="play-friends-btn" class="btn btn-secondary" onclick="handlePlayFriends()">Play with Friends</button>
+        <div class="lobby-hero">
+            <img id="lobby-carousel-image" class="lobby-carousel" src="" alt="Møbee cards">
         </div>
 
-        <div id="lobby-multiplayer" style="display:none;">
+        <div class="lobby-actions" id="lobby-actions">
+            <button id="play-solo-btn" class="btn btn-primary" onclick="handlePlaySolo()">Play Solo</button>
+            <button id="play-friends-btn" class="btn btn-secondary" onclick="handlePlayFriends()">Play with Friends</button>
+            <button id="buy-mobee-btn" class="btn btn-secondary" onclick="openShopModal()">Buy a Møbee</button>
+        </div>
+
+        <div id="friends-section" style="display:none;">
             <div class="lobby-row">
                 <div class="lobby-label">Room Code</div>
                 <div id="lobby-room-code" class="lobby-code"></div>
