@@ -306,15 +306,8 @@ conn.addEventListener("open", () => {
         avatar: selectedAvatar
     });
 
-    // Show invite link
-    msgBody.innerHTML = `
-        <p style="font-size: 0.9rem; color: #666; margin-bottom: 15px;">Flip 3 cards and find the unique shared symbol!</p>
-        <a href="#" onclick="openInviteModal(); return false;" style="font-size: 1rem; color: #4a90e2; text-decoration: underline; font-weight: 600; cursor: pointer;">Play with friends!</a>
-    `;
-
-    // Show the message element
-    msgEl.classList.remove('lost');
-    msgEl.style.display = 'block';
+    // Show lobby instead of modal
+    showLobby();
 });
 
 // UI Elements
@@ -323,6 +316,18 @@ const scoreEl = document.getElementById('score-el');
 const msgEl = document.getElementById('message');
 const msgTitle = document.getElementById('msg-title');
 const msgBody = document.getElementById('msg-body');
+
+// Lobby Elements
+const lobbyEl = document.getElementById('lobby');
+const lobbyEntryEl = document.getElementById('lobby-entry');
+const lobbyMultiplayerEl = document.getElementById('lobby-multiplayer');
+const lobbyRoomCodeEl = document.getElementById('lobby-room-code');
+const lobbyPlayersEl = document.getElementById('lobby-players');
+const lobbyStartBtn = document.getElementById('lobby-start-btn');
+const lobbyWaitingEl = document.getElementById('lobby-waiting');
+const shareInviteBtn = document.getElementById('share-invite-btn');
+const playSoloBtn = document.getElementById('play-solo-btn');
+const playFriendsBtn = document.getElementById('play-friends-btn');
 
 // Game Timer
 let gameStartTime = null;
@@ -367,6 +372,106 @@ function disarmNextRoundWatchdog() {
     awaitingRound = false;
     clearTimeout(nextRoundWatchdog);
     nextRoundWatchdog = null;
+}
+
+// --- Lobby Functions ---
+let isMultiplayerMode = false;
+let currentHostId = null;
+
+function showLobby() {
+    lobbyEl.style.display = 'flex';
+    msgEl.style.display = 'none';
+    lobbyRoomCodeEl.textContent = roomCode;
+
+    // Check if we joined via a room link (someone else's room)
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinedViaLink = urlParams.has('room');
+
+    if (joinedViaLink) {
+        // Joined someone's room - go straight to multiplayer view
+        enterMultiplayerLobby();
+    } else {
+        // Fresh start - show entry choice
+        lobbyEntryEl.style.display = 'flex';
+        lobbyMultiplayerEl.style.display = 'none';
+    }
+}
+
+function hideLobby() {
+    lobbyEl.style.display = 'none';
+}
+
+function enterMultiplayerLobby() {
+    isMultiplayerMode = true;
+    lobbyEntryEl.style.display = 'none';
+    lobbyMultiplayerEl.style.display = 'block';
+    lobbyRoomCodeEl.textContent = roomCode;
+}
+
+// Play Solo button - start game immediately
+playSoloBtn.onclick = () => {
+    isMultiplayerMode = false;
+    playSoloBtn.disabled = true;
+    playSoloBtn.textContent = 'Starting...';
+    safeSend({ type: "START_GAME" });
+};
+
+// Play with Friends button - show multiplayer lobby
+playFriendsBtn.onclick = () => {
+    enterMultiplayerLobby();
+};
+
+// Share Invite button - native share or clipboard
+shareInviteBtn.onclick = async () => {
+    const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+    const text = `Join my MØBEE game!\nRoom code: ${roomCode}`;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: 'MØBEE', text, url });
+        } catch (e) {
+            // User cancelled or error - ignore
+        }
+    } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        shareInviteBtn.textContent = 'Copied!';
+        setTimeout(() => { shareInviteBtn.textContent = 'Share Invite'; }, 1500);
+    }
+};
+
+// Start Game button (host only)
+lobbyStartBtn.onclick = () => {
+    lobbyStartBtn.disabled = true;
+    lobbyStartBtn.textContent = 'Starting...';
+    safeSend({ type: "START_GAME" });
+};
+
+function updateLobbyPlayers(scores, avatars) {
+    if (!lobbyPlayersEl) return;
+
+    const playerIds = Object.keys(scores);
+
+    // Determine host (first player alphabetically - simple heuristic)
+    currentHostId = playerIds.sort()[0];
+    const isHost = playerId === currentHostId;
+
+    // Build player avatars
+    lobbyPlayersEl.innerHTML = playerIds.map(id => {
+        const isMe = id === playerId;
+        const avatarHtml = getAvatarHTML(avatars[id], 40, isMe);
+        return avatarHtml;
+    }).join('');
+
+    // Show/hide start button based on host status
+    if (isHost) {
+        lobbyStartBtn.style.display = 'block';
+        lobbyStartBtn.disabled = false;
+        lobbyStartBtn.textContent = 'Start Game';
+        lobbyWaitingEl.style.display = 'none';
+    } else {
+        lobbyStartBtn.style.display = 'none';
+        lobbyWaitingEl.style.display = 'block';
+    }
 }
 
 function startGameTimer() {
@@ -522,12 +627,10 @@ function showGameOverScreen(scores, avatars) {
     startBtn.innerText = "Play Again";
     startBtn.style.display = 'block';
     startBtn.onclick = () => {
-        // Reset scores and immediately start new game
+        // Reset scores and go back to lobby
         safeSend({ type: "RESET_GAME" });
-        // After a brief moment, start the first round
-        setTimeout(() => {
-            safeSend({ type: "START_GAME" });
-        }, 100);
+        msgEl.style.display = 'none';
+        showLobby();
     };
 }
 
@@ -565,10 +668,15 @@ conn.addEventListener("message", (event) => {
 
         case "UPDATE_SCORES":
             updateScoreboard(data.scores, data.avatars);
+            // Update lobby players if still in lobby
+            if (!gameStartTime) {
+                updateLobbyPlayers(data.scores, data.avatars);
+            }
             break;
 
         case "NEW_ROUND":
             disarmNextRoundWatchdog();
+            hideLobby();
             // Server sent 3 cards (arrays of IDs). Hide modal, show board.
             console.log("NEW_ROUND received:", {
                 cards: data.cards,
@@ -611,8 +719,9 @@ conn.addEventListener("message", (event) => {
                 clearInterval(gameTimerInterval);
             }
             updateScoreboard(data.scores, data.avatars);
-            // Hide the message overlay - new game will start immediately
+            // Show lobby again
             msgEl.style.display = 'none';
+            showLobby();
             break;
 
         case "WINNER":
