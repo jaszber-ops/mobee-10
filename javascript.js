@@ -668,8 +668,8 @@ conn.addEventListener("message", (event) => {
                     msgBody.innerHTML = `<div class="countdown-number">${startCountdown}</div>`;
                 } else {
                     clearInterval(startCountdownInterval);
-                    msgBody.innerHTML = "GO!";
-                    // Server will send NEW_ROUND shortly
+                    // Hide modal - NEW_ROUND will show the cards
+                    msgEl.style.display = 'none';
                 }
             }, 1000);
             break;
@@ -936,8 +936,8 @@ function handleWinner(data) {
                 if (gameStartTime) {
                     resumeTimer();
                 }
-                // Server will auto-send next round - just wait for it
-                msgBody.innerHTML = "Ready...";
+                // Hide modal - NEW_ROUND will show next cards
+                msgEl.style.display = 'none';
             }
         }, 1000);
     }, 600); // Delay modal to show symbol animation first
@@ -1008,8 +1008,8 @@ function handleWrongGuess(data) {
                 if (gameStartTime) {
                     resumeTimer();
                 }
-                // Server will auto-send next round - just wait for it
-                msgBody.innerHTML = "Ready...";
+                // Hide modal - NEW_ROUND will show next cards
+                msgEl.style.display = 'none';
             }
         }, 1000);
     }, 1000); // Show message for 1 second first
