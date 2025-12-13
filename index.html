@@ -51,8 +51,8 @@
         <h2 id="lobby-title">Møbee</h2>
 
         <div class="lobby-entry" id="lobby-entry">
-            <button id="play-solo-btn" class="btn btn-primary">Play Solo</button>
-            <button id="play-friends-btn" class="btn btn-secondary">Play with Friends</button>
+            <button id="play-solo-btn" class="btn btn-primary" onclick="handlePlaySolo()">Play Solo</button>
+            <button id="play-friends-btn" class="btn btn-secondary" onclick="handlePlayFriends()">Play with Friends</button>
         </div>
 
         <div id="lobby-multiplayer" style="display:none;">
@@ -61,14 +61,14 @@
                 <div id="lobby-room-code" class="lobby-code"></div>
             </div>
 
-            <button id="share-invite-btn" class="btn btn-secondary">Share Invite</button>
+            <button id="share-invite-btn" class="btn btn-secondary" onclick="handleShareInvite()">Share Invite</button>
 
             <div class="lobby-row">
                 <div class="lobby-label">Players</div>
                 <div id="lobby-players" class="lobby-players"></div>
             </div>
 
-            <button id="lobby-start-btn" class="btn btn-primary">Start Game</button>
+            <button id="lobby-start-btn" class="btn btn-primary" onclick="handleLobbyStart()">Start Game</button>
             <div id="lobby-waiting" class="lobby-hint" style="display:none;">Waiting for host to start…</div>
         </div>
     </div>

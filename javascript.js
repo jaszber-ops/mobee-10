@@ -408,54 +408,52 @@ function enterMultiplayerLobby() {
     lobbyRoomCodeEl.textContent = roomCode;
 }
 
-// Play Solo button - start game immediately
-if (playSoloBtn) {
-    playSoloBtn.onclick = () => {
-        console.log("Play Solo clicked");
-        isMultiplayerMode = false;
-        playSoloBtn.disabled = true;
-        playSoloBtn.textContent = 'Starting...';
-        safeSend({ type: "START_GAME" });
-    };
-}
+// Global lobby button handlers (called from HTML onclick)
+window.handlePlaySolo = function() {
+    console.log("Play Solo clicked");
+    isMultiplayerMode = false;
+    const btn = document.getElementById('play-solo-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Starting...';
+    }
+    safeSend({ type: "START_GAME" });
+};
 
-// Play with Friends button - show multiplayer lobby
-if (playFriendsBtn) {
-    playFriendsBtn.onclick = () => {
-        console.log("Play with Friends clicked");
-        enterMultiplayerLobby();
-    };
-}
+window.handlePlayFriends = function() {
+    console.log("Play with Friends clicked");
+    enterMultiplayerLobby();
+};
 
-// Share Invite button - native share or clipboard
-if (shareInviteBtn) {
-    shareInviteBtn.onclick = async () => {
-        const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-        const text = `Join my MØBEE game!\nRoom code: ${roomCode}`;
+window.handleShareInvite = async function() {
+    const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+    const text = `Join my MØBEE game!\nRoom code: ${roomCode}`;
 
-        if (navigator.share) {
-            try {
-                await navigator.share({ title: 'MØBEE', text, url });
-            } catch (e) {
-                // User cancelled or error - ignore
-            }
-        } else if (navigator.clipboard) {
-            await navigator.clipboard.writeText(`${text}\n${url}`);
-            shareInviteBtn.textContent = 'Copied!';
-            setTimeout(() => { shareInviteBtn.textContent = 'Share Invite'; }, 1500);
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: 'MØBEE', text, url });
+        } catch (e) {
+            // User cancelled or error - ignore
         }
-    };
-}
+    } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        const btn = document.getElementById('share-invite-btn');
+        if (btn) {
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = 'Share Invite'; }, 1500);
+        }
+    }
+};
 
-// Start Game button (host only)
-if (lobbyStartBtn) {
-    lobbyStartBtn.onclick = () => {
-        console.log("Start Game clicked");
-        lobbyStartBtn.disabled = true;
-        lobbyStartBtn.textContent = 'Starting...';
-        safeSend({ type: "START_GAME" });
-    };
-}
+window.handleLobbyStart = function() {
+    console.log("Start Game clicked");
+    const btn = document.getElementById('lobby-start-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Starting...';
+    }
+    safeSend({ type: "START_GAME" });
+};
 
 function updateLobbyPlayers(scores, avatars) {
     if (!lobbyPlayersEl) return;
