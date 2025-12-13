@@ -278,6 +278,44 @@ let pausedTime = 0; // Track time spent paused
 let pauseStartTime = null;
 const GAME_DURATION = 60; // seconds
 
+// Single-player watchdog to prevent stuck games
+let nextRoundWatchdog = null;
+let awaitingRound = false;
+
+function armNextRoundWatchdog(reason = "") {
+    clearTimeout(nextRoundWatchdog);
+    awaitingRound = true;
+
+    // Give server a brief moment to push NEW_ROUND; then kick it.
+    nextRoundWatchdog = setTimeout(() => {
+        if (!awaitingRound) return;
+
+        console.warn("No NEW_ROUND received, kicking START_GAME. reason=", reason);
+
+        // Show minimal feedback so user doesn't think it's frozen
+        msgTitle.innerText = "Resyncing…";
+        msgBody.innerHTML = "Starting next round…";
+        msgEl.classList.remove("lost");
+        msgEl.style.display = "block";
+
+        safeSend({ type: "START_GAME" });
+
+        // Try once more if still no NEW_ROUND
+        nextRoundWatchdog = setTimeout(() => {
+            if (!awaitingRound) return;
+            console.warn("Still no NEW_ROUND, kicking START_GAME again.");
+            safeSend({ type: "START_GAME" });
+        }, 1500);
+
+    }, 800);
+}
+
+function disarmNextRoundWatchdog() {
+    awaitingRound = false;
+    clearTimeout(nextRoundWatchdog);
+    nextRoundWatchdog = null;
+}
+
 function startGameTimer() {
     // Don't set gameStartTime here - use server's time
     if (!gameStartTime) {
@@ -477,6 +515,7 @@ conn.addEventListener("message", (event) => {
             break;
 
         case "NEW_ROUND":
+            disarmNextRoundWatchdog();
             // Server sent 3 cards (arrays of IDs). Hide modal, show board.
             console.log("NEW_ROUND received:", {
                 cards: data.cards,
@@ -800,55 +839,55 @@ function handleWinner(data) {
 
     // In single player mode, skip all messages and just show brief card animation
     if (isSinglePlayer) {
-        // The clicked card already has 'correct' class, no need to add to all
+        // Arm watchdog in case NEW_ROUND doesn't arrive
+        armNextRoundWatchdog("WINNER(single)");
         // Resume timer immediately
         setTimeout(() => {
-            if (gameStartTime) {
-                resumeTimer();
-            }
+            if (gameStartTime) resumeTimer();
         }, 10);
-    } else {
-        // Multiplayer mode - show winner message WITH countdown
-        const isWinner = data.winnerId === playerId;
-
-        if (isWinner) {
-            // I WON! - cards already have 'correct' class from click
-            msgTitle.innerHTML = `${winnerAvatar} You Won!`;
-            msgEl.classList.remove('lost');
-        } else {
-            // OPPONENT WON - show red border immediately with symbol animation
-            cards.forEach(c => c.classList.add('wrong'));
-            msgTitle.innerHTML = `You lost!`;
-            msgEl.classList.add('lost');
-        }
-
-        // Delay showing modal so players can see the symbol animation
-        setTimeout(() => {
-            // Show overlay with countdown
-            msgEl.style.display = 'block';
-            const startBtn = msgEl.querySelector('button');
-            startBtn.style.display = 'none'; // Hide start button during countdown
-
-            // Start countdown with winner message
-            let countdown = 3;
-            msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-
-            const countdownInterval = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-                } else {
-                    clearInterval(countdownInterval);
-                    // Resume timer after countdown
-                    if (gameStartTime) {
-                        resumeTimer();
-                    }
-                    // Server will auto-send next round - just wait for it
-                    msgBody.innerHTML = "Ready...";
-                }
-            }, 1000);
-        }, 600); // Delay modal to show symbol animation first
+        return;
     }
+
+    // Multiplayer mode - show winner message WITH countdown
+    const isWinner = data.winnerId === playerId;
+
+    if (isWinner) {
+        // I WON! - cards already have 'correct' class from click
+        msgTitle.innerHTML = `${winnerAvatar} You Won!`;
+        msgEl.classList.remove('lost');
+    } else {
+        // OPPONENT WON - show red border immediately with symbol animation
+        cards.forEach(c => c.classList.add('wrong'));
+        msgTitle.innerHTML = `You lost!`;
+        msgEl.classList.add('lost');
+    }
+
+    // Delay showing modal so players can see the symbol animation
+    setTimeout(() => {
+        // Show overlay with countdown
+        msgEl.style.display = 'block';
+        const startBtn = msgEl.querySelector('button');
+        startBtn.style.display = 'none'; // Hide start button during countdown
+
+        // Start countdown with winner message
+        let countdown = 3;
+        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+            } else {
+                clearInterval(countdownInterval);
+                // Resume timer after countdown
+                if (gameStartTime) {
+                    resumeTimer();
+                }
+                // Server will auto-send next round - just wait for it
+                msgBody.innerHTML = "Ready...";
+            }
+        }, 1000);
+    }, 600); // Delay modal to show symbol animation first
 }
 
 function handleWrongGuess(data) {
@@ -870,57 +909,57 @@ function handleWrongGuess(data) {
     if (isSinglePlayer) {
         // Just flash the cards red briefly, no overlay
         cards.forEach(c => c.classList.add('wrong'));
-
+        // Arm watchdog in case NEW_ROUND doesn't arrive
+        armNextRoundWatchdog("WRONG_GUESS(single)");
         // Resume timer immediately
         setTimeout(() => {
-            if (gameStartTime) {
-                resumeTimer();
-            }
+            if (gameStartTime) resumeTimer();
         }, 10);
-    } else {
-        // Multiplayer mode - show full message
-        if (data.guesserId === playerId) {
-            // I guessed wrong!
-            cards.forEach(c => c.classList.add('wrong'));
-            msgTitle.innerText = "You Lost - WRONG!";
-            msgBody.innerText = "Opponent wins the point!";
-            msgEl.classList.add('lost');
-        } else {
-            // Opponent guessed wrong - I win!
-            cards.forEach(c => c.classList.add('correct'));
-            msgTitle.innerText = "You Win!";
-            msgBody.innerText = "Opponent guessed wrong!";
-            msgEl.classList.remove('lost');
-        }
-
-        // Multiplayer mode - show overlay with countdown
-        msgEl.style.display = 'block';
-        const startBtn = msgEl.querySelector('button');
-        startBtn.style.display = 'none'; // Hide start button during countdown
-
-        // Show message briefly, then start countdown
-        setTimeout(() => {
-            // Countdown from 3
-            let countdown = 3;
-            msgTitle.innerText = "Next Round";
-            msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-
-            const countdownInterval = setInterval(() => {
-                countdown--;
-                if (countdown > 0) {
-                    msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-                } else {
-                    clearInterval(countdownInterval);
-                    // Resume timer after countdown
-                    if (gameStartTime) {
-                        resumeTimer();
-                    }
-                    // Server will auto-send next round - just wait for it
-                    msgBody.innerHTML = "Ready...";
-                }
-            }, 1000);
-        }, 1000); // Show message for 1 second first
+        return;
     }
+
+    // Multiplayer mode - show full message
+    if (data.guesserId === playerId) {
+        // I guessed wrong!
+        cards.forEach(c => c.classList.add('wrong'));
+        msgTitle.innerText = "You Lost - WRONG!";
+        msgBody.innerText = "Opponent wins the point!";
+        msgEl.classList.add('lost');
+    } else {
+        // Opponent guessed wrong - I win!
+        cards.forEach(c => c.classList.add('correct'));
+        msgTitle.innerText = "You Win!";
+        msgBody.innerText = "Opponent guessed wrong!";
+        msgEl.classList.remove('lost');
+    }
+
+    // Multiplayer mode - show overlay with countdown
+    msgEl.style.display = 'block';
+    const startBtn = msgEl.querySelector('button');
+    startBtn.style.display = 'none'; // Hide start button during countdown
+
+    // Show message briefly, then start countdown
+    setTimeout(() => {
+        // Countdown from 3
+        let countdown = 3;
+        msgTitle.innerText = "Next Round";
+        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
+            } else {
+                clearInterval(countdownInterval);
+                // Resume timer after countdown
+                if (gameStartTime) {
+                    resumeTimer();
+                }
+                // Server will auto-send next round - just wait for it
+                msgBody.innerHTML = "Ready...";
+            }
+        }, 1000);
+    }, 1000); // Show message for 1 second first
 }
 
 // Helper function to create avatar sprite HTML
