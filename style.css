@@ -699,9 +699,12 @@ a.stay-btn {
     font-weight: 600;
 }
 
-/* Lobby hero carousel */
-.lobby-hero {
+/* Lobby hero carousel with overlay */
+.lobby-hero-link {
+    display: block;
+    position: relative;
     margin-top: 10px;
+    text-decoration: none;
 }
 
 .lobby-carousel {
@@ -712,6 +715,24 @@ a.stay-btn {
     border-radius: 14px;
     display: block;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.lobby-hero-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 1rem;
+    white-space: nowrap;
+}
+
+.lobby-hero-link:hover .lobby-hero-overlay {
+    background: rgba(0, 0, 0, 0.85);
 }
 
 /* Lobby action buttons */
