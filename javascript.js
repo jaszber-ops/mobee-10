@@ -669,7 +669,7 @@ conn.addEventListener("message", (event) => {
                 } else {
                     clearInterval(startCountdownInterval);
                     // Keep modal visible at same size - NEW_ROUND handler will hide it when cards arrive
-                    msgTitle.innerHTML = "&nbsp;";
+                    msgBody.innerHTML = "&nbsp;";
                 }
             }, 1000);
             break;
@@ -937,7 +937,7 @@ function handleWinner(data) {
                     resumeTimer();
                 }
                 // Keep modal visible at same size - NEW_ROUND handler will hide it when cards arrive
-                msgTitle.innerHTML = "&nbsp;";
+                msgBody.innerHTML = "&nbsp;";
             }
         }, 1000);
     }, 600); // Delay modal to show symbol animation first
@@ -1009,7 +1009,7 @@ function handleWrongGuess(data) {
                     resumeTimer();
                 }
                 // Keep modal visible at same size - NEW_ROUND handler will hide it when cards arrive
-                msgTitle.innerHTML = "&nbsp;";
+                msgBody.innerHTML = "&nbsp;";
             }
         }, 1000);
     }, 1000); // Show message for 1 second first
