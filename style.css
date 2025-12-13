@@ -39,11 +39,17 @@ body {
     position: relative;
     user-select: none;
     -webkit-user-select: none;
-    touch-action: none;
     overscroll-behavior: none;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     overflow: hidden;
+}
+
+/* touch-action only on touch devices to prevent zoom/pan */
+@media (pointer: coarse) {
+    body {
+        touch-action: none;
+    }
 }
 
 header {
