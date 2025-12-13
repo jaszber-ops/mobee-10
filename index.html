@@ -47,35 +47,36 @@
 </header>
 
 <div id="lobby" class="lobby" style="display:none;">
-    <div class="lobby-card">
-        <h2 id="lobby-title">Møbee</h2>
+    <p class="lobby-tagline">Flip 3 cards and find the unique shared symbol!</p>
 
-        <a href="https://mobeecards.store/?ref=game" target="_blank" class="lobby-hero-link">
-            <img id="lobby-carousel-image" class="lobby-carousel" src="" alt="Møbee cards">
-            <div class="lobby-hero-overlay">Get the Cards</div>
-        </a>
+    <a href="https://mobeecards.store/?ref=game" target="_blank" class="lobby-hero-link">
+        <img id="lobby-carousel-image" class="lobby-carousel" src="" alt="Møbee cards">
+        <div class="lobby-hero-overlay">
+            <span class="overlay-text">Get the Cards</span>
+            <span class="overlay-url">mobeecards.store</span>
+        </div>
+    </a>
 
-        <div class="lobby-actions" id="lobby-actions">
-            <button id="play-solo-btn" class="btn btn-primary" onclick="handlePlaySolo()">Play by Yourself</button>
-            <button id="play-friends-btn" class="btn btn-secondary" onclick="handlePlayFriends()">Play with a Friend</button>
+    <div class="lobby-actions" id="lobby-actions">
+        <button id="play-solo-btn" class="btn btn-primary" onclick="handlePlaySolo()">Play by Yourself</button>
+        <button id="play-friends-btn" class="btn btn-secondary" onclick="handlePlayFriends()">Play with a Friend</button>
+    </div>
+
+    <div id="friends-section" style="display:none;">
+        <div class="lobby-row">
+            <div class="lobby-label">Room Code</div>
+            <div id="lobby-room-code" class="lobby-code"></div>
         </div>
 
-        <div id="friends-section" style="display:none;">
-            <div class="lobby-row">
-                <div class="lobby-label">Room Code</div>
-                <div id="lobby-room-code" class="lobby-code"></div>
-            </div>
+        <button id="share-invite-btn" class="btn btn-secondary" onclick="handleShareInvite()">Share Invite</button>
 
-            <button id="share-invite-btn" class="btn btn-secondary" onclick="handleShareInvite()">Share Invite</button>
-
-            <div class="lobby-row">
-                <div class="lobby-label">Players</div>
-                <div id="lobby-players" class="lobby-players"></div>
-            </div>
-
-            <button id="lobby-start-btn" class="btn btn-primary" onclick="handleLobbyStart()">Start Game</button>
-            <div id="lobby-waiting" class="lobby-hint" style="display:none;">Waiting for host to start…</div>
+        <div class="lobby-row">
+            <div class="lobby-label">Players</div>
+            <div id="lobby-players" class="lobby-players"></div>
         </div>
+
+        <button id="lobby-start-btn" class="btn btn-primary" onclick="handleLobbyStart()">Start Game</button>
+        <div id="lobby-waiting" class="lobby-hint" style="display:none;">Waiting for host to start…</div>
     </div>
 </div>
 
