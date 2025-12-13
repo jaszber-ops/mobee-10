@@ -314,6 +314,15 @@ a.stay-btn {
   background: var(--btn-green);
 }
 
+/* Named button variants */
+.btn-primary {
+  background: var(--btn-green) !important;
+}
+
+.btn-secondary {
+  background: var(--btn-blue) !important;
+}
+
 /* Inside modal button stacks: full width, no max-width, no extra margins */
 .modal-actions button,
 .modal-actions a.buy-btn,

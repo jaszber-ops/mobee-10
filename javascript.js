@@ -409,42 +409,53 @@ function enterMultiplayerLobby() {
 }
 
 // Play Solo button - start game immediately
-playSoloBtn.onclick = () => {
-    isMultiplayerMode = false;
-    playSoloBtn.disabled = true;
-    playSoloBtn.textContent = 'Starting...';
-    safeSend({ type: "START_GAME" });
-};
+if (playSoloBtn) {
+    playSoloBtn.onclick = () => {
+        console.log("Play Solo clicked");
+        isMultiplayerMode = false;
+        playSoloBtn.disabled = true;
+        playSoloBtn.textContent = 'Starting...';
+        safeSend({ type: "START_GAME" });
+    };
+}
 
 // Play with Friends button - show multiplayer lobby
-playFriendsBtn.onclick = () => {
-    enterMultiplayerLobby();
-};
+if (playFriendsBtn) {
+    playFriendsBtn.onclick = () => {
+        console.log("Play with Friends clicked");
+        enterMultiplayerLobby();
+    };
+}
 
 // Share Invite button - native share or clipboard
-shareInviteBtn.onclick = async () => {
-    const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    const text = `Join my MØBEE game!\nRoom code: ${roomCode}`;
+if (shareInviteBtn) {
+    shareInviteBtn.onclick = async () => {
+        const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+        const text = `Join my MØBEE game!\nRoom code: ${roomCode}`;
 
-    if (navigator.share) {
-        try {
-            await navigator.share({ title: 'MØBEE', text, url });
-        } catch (e) {
-            // User cancelled or error - ignore
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: 'MØBEE', text, url });
+            } catch (e) {
+                // User cancelled or error - ignore
+            }
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(`${text}\n${url}`);
+            shareInviteBtn.textContent = 'Copied!';
+            setTimeout(() => { shareInviteBtn.textContent = 'Share Invite'; }, 1500);
         }
-    } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
-        shareInviteBtn.textContent = 'Copied!';
-        setTimeout(() => { shareInviteBtn.textContent = 'Share Invite'; }, 1500);
-    }
-};
+    };
+}
 
 // Start Game button (host only)
-lobbyStartBtn.onclick = () => {
-    lobbyStartBtn.disabled = true;
-    lobbyStartBtn.textContent = 'Starting...';
-    safeSend({ type: "START_GAME" });
-};
+if (lobbyStartBtn) {
+    lobbyStartBtn.onclick = () => {
+        console.log("Start Game clicked");
+        lobbyStartBtn.disabled = true;
+        lobbyStartBtn.textContent = 'Starting...';
+        safeSend({ type: "START_GAME" });
+    };
+}
 
 function updateLobbyPlayers(scores, avatars) {
     if (!lobbyPlayersEl) return;
