@@ -2,6 +2,38 @@
 import PartySocket from "https://cdn.jsdelivr.net/npm/partysocket@1.0.0/+esm";
 import { VERSION } from './version.js';
 
+// --- iOS zoom suppression ---
+function preventZoom(e) {
+    e.preventDefault();
+}
+
+document.addEventListener('gesturestart', preventZoom, { passive: false });
+document.addEventListener('gesturechange', preventZoom, { passive: false });
+document.addEventListener('gestureend', preventZoom, { passive: false });
+
+// Prevent double-tap zoom
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+    }
+    lastTouchEnd = now;
+}, { passive: false });
+
+// Lock scale on orientation change
+window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+        const viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+            viewport.setAttribute(
+                'content',
+                'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+            );
+        }
+    }, 300);
+});
+
 // --- 2. CONFIGURATION ---
 // The visual assets. Order must match server IDs (0-13)
 // Using sprite coordinates [col, row] from mobee_sprite.svg (0-indexed)
