@@ -34,6 +34,27 @@ window.addEventListener('orientationchange', () => {
     }, 300);
 });
 
+// Prevent horizontal swipe/bounce on iOS
+let startX = 0;
+let startY = 0;
+
+document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    const dx = Math.abs(e.touches[0].clientX - startX);
+    const dy = Math.abs(e.touches[0].clientY - startY);
+
+    // If the gesture is mostly horizontal, block it.
+    if (dx > dy + 3) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 // --- 2. CONFIGURATION ---
 // The visual assets. Order must match server IDs (0-13)
 // Using sprite coordinates [col, row] from mobee_sprite.svg (0-indexed)
