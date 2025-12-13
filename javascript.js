@@ -668,8 +668,8 @@ conn.addEventListener("message", (event) => {
                     msgBody.innerHTML = `<div class="countdown-number">${startCountdown}</div>`;
                 } else {
                     clearInterval(startCountdownInterval);
-                    // Hide modal - NEW_ROUND will show the cards
-                    msgEl.style.display = 'none';
+                    // Keep modal visible - NEW_ROUND handler will hide it when cards arrive
+                    msgBody.innerHTML = "";
                 }
             }, 1000);
             break;
@@ -936,8 +936,8 @@ function handleWinner(data) {
                 if (gameStartTime) {
                     resumeTimer();
                 }
-                // Hide modal - NEW_ROUND will show next cards
-                msgEl.style.display = 'none';
+                // Keep modal visible - NEW_ROUND handler will hide it when cards arrive
+                msgBody.innerHTML = "";
             }
         }, 1000);
     }, 600); // Delay modal to show symbol animation first
@@ -1008,8 +1008,8 @@ function handleWrongGuess(data) {
                 if (gameStartTime) {
                     resumeTimer();
                 }
-                // Hide modal - NEW_ROUND will show next cards
-                msgEl.style.display = 'none';
+                // Keep modal visible - NEW_ROUND handler will hide it when cards arrive
+                msgBody.innerHTML = "";
             }
         }, 1000);
     }, 1000); // Show message for 1 second first
