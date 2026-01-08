@@ -63,20 +63,19 @@
     </div>
 
     <div id="friends-section" style="display:none;">
+        <button id="lobby-start-btn" class="btn btn-primary" onclick="handleLobbyStart()">Start Game</button>
+        <div id="lobby-waiting" class="lobby-hint" style="display:none;">Waiting for host to start…</div>
+
         <div class="lobby-row">
             <div class="lobby-label">Room Code</div>
-            <div id="lobby-room-code" class="lobby-code"></div>
+            <div class="lobby-code-row">
+                <div id="lobby-room-code" class="lobby-code"></div>
+                <button id="copy-room-code-btn" class="btn btn-tertiary" onclick="handleCopyRoomCode()">Copy Code</button>
+            </div>
+            <button id="copy-room-link-btn" class="btn btn-secondary" onclick="handleCopyRoomLink()">Copy Link</button>
         </div>
 
         <button id="share-invite-btn" class="btn btn-secondary" onclick="handleShareInvite()">Share Invite</button>
-
-        <div class="lobby-row">
-            <div class="lobby-label">Players</div>
-            <div id="lobby-players" class="lobby-players"></div>
-        </div>
-
-        <button id="lobby-start-btn" class="btn btn-primary" onclick="handleLobbyStart()">Start Game</button>
-        <div id="lobby-waiting" class="lobby-hint" style="display:none;">Waiting for host to start…</div>
     </div>
 </div>
 

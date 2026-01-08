@@ -105,7 +105,8 @@ export default class MobeeServer {
         scores: {},
         avatars: {},
         currentAnswer: null,
-        gameStartTime: null
+        gameStartTime: null,
+        countdownStartAt: null
       };
       await this.party.storage.put("gamestate", state);
     }
@@ -153,6 +154,20 @@ export default class MobeeServer {
         console.log("Resetting gameStartTime (status:", state.status, "elapsed:", elapsed, "s)");
         state.gameStartTime = null;
         state.status = "waiting";
+        await this.party.storage.put("gamestate", state);
+      }
+    }
+
+    // Reset stale countdowns (e.g., server restart during countdown)
+    if (state.status === "countdown") {
+      const countdownAge = state.countdownStartAt ? Date.now() - state.countdownStartAt : null;
+      const isCountdownStale = countdownAge === null || countdownAge > 5000;
+      const playerCount = Object.keys(state.scores).length;
+
+      if (isCountdownStale || playerCount <= 1) {
+        console.log("Resetting stale countdown (age:", countdownAge, "ms, players:", playerCount, ")");
+        state.status = "waiting";
+        state.countdownStartAt = null;
         await this.party.storage.put("gamestate", state);
       }
     }
@@ -241,8 +256,15 @@ export default class MobeeServer {
       if (isNewGame) {
         // Mark that countdown is in progress to prevent multiple starts (multiplayer only)
         if (state.status === "countdown") {
-          console.log("Countdown already in progress, ignoring START_GAME");
-          return;
+          const countdownAge = state.countdownStartAt ? Date.now() - state.countdownStartAt : null;
+          const isCountdownStale = countdownAge === null || countdownAge > 5000;
+          if (!isCountdownStale) {
+            console.log("Countdown already in progress, ignoring START_GAME");
+            return;
+          }
+          console.log("Stale countdown detected, restarting");
+          state.status = "waiting";
+          state.countdownStartAt = null;
         }
 
         // Helper function to start the actual game
@@ -257,6 +279,7 @@ export default class MobeeServer {
 
           currentState.gameStartTime = Date.now();
           currentState.gameEndsAt = Date.now() + 60000;
+          currentState.countdownStartAt = null;
           console.log("Game timer started fresh at 60 seconds! Ends at:", currentState.gameEndsAt);
 
           // Reset all scores to 0 at game start
@@ -294,6 +317,7 @@ export default class MobeeServer {
         if (isMultiplayer) {
           // Multiplayer: show 3-2-1 countdown
           state.status = "countdown";
+          state.countdownStartAt = Date.now();
           await this.party.storage.put("gamestate", state);
 
           // Broadcast countdown start to all players

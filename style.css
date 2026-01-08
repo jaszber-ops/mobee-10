@@ -21,7 +21,7 @@ html, body {
     --hex-height: 50%;
     --hex-width: 43.33%;
     --spread-radius: 25.5%;
-    --symbol-scale: 0.85;
+    --symbol-scale: 0.66;
 }
 
 body {
@@ -190,6 +190,7 @@ header {
     object-fit: contain;
     transition: transform 0.2s;
     mix-blend-mode: normal;
+    filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.6));
 }
 
 /* Gameplay PNG symbols */
@@ -199,6 +200,7 @@ header {
     object-fit: contain;
     pointer-events: none;
     image-rendering: auto;
+    filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.6));
 }
 
 /* Scale symbol sprites to fill container */
@@ -615,7 +617,7 @@ a.stay-btn {
     :root {
         --ui-top: 120px;     /* header/controls above board */
         --ui-bottom: 24px;   /* footer space */
-        --symbol-scale: 0.78;
+        --symbol-scale: 0.66;
     }
 
     /* Full-bleed board container */
@@ -665,6 +667,14 @@ a.stay-btn {
     margin: 18px 0;
 }
 
+.lobby-code-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 .lobby-label {
     color: #666;
     font-size: 0.95rem;
@@ -676,6 +686,12 @@ a.stay-btn {
     font-weight: 800;
     letter-spacing: 0.12em;
     color: var(--text);
+}
+
+.btn.btn-tertiary {
+    background: #f0f0f0;
+    color: #333;
+    border: 2px solid #ddd;
 }
 
 .lobby-players {

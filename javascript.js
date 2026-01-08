@@ -2,6 +2,17 @@
 import PartySocket from "https://cdn.jsdelivr.net/npm/partysocket@1.0.0/+esm";
 import { VERSION } from './version.js';
 
+// Keep service worker and cached assets in sync with the app version.
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register(`/service-worker.js?v=${VERSION}`, {
+            updateViaCache: "none"
+        }).catch((error) => {
+            console.error("Service Worker registration failed:", error);
+        });
+    });
+}
+
 // --- iOS zoom suppression ---
 function preventZoom(e) {
     e.preventDefault();
@@ -188,11 +199,20 @@ if (!hasSeenAvatarSelector) {
     // Will show after room selection
 }
 
-// PartyKit deployed host
-const PARTYKIT_HOST = "mobee-multi.jaszber-ops.partykit.dev";
-
 // Room Code System - go straight to lobby
 const urlParams = new URLSearchParams(window.location.search);
+const partykitOverride = urlParams.get('pk');
+const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+
+if (partykitOverride) {
+    localStorage.setItem('mobee_partykit_host', partykitOverride);
+}
+
+const savedPartyKitHost = localStorage.getItem('mobee_partykit_host');
+
+// PartyKit deployed host (allow local override for dev)
+const PARTYKIT_HOST = partykitOverride
+    || (isLocalHost ? (savedPartyKitHost || "127.0.0.1:1999") : "mobee-multi.jaszber-ops.partykit.dev");
 let roomCode = urlParams.get('room');
 let conn = null;
 
@@ -378,10 +398,35 @@ function disarmNextRoundWatchdog() {
 let isMultiplayerMode = false;
 let currentHostId = null;
 
+function setLobbyMode(mode) {
+    const heroLink = document.querySelector('.lobby-hero-link');
+    const footerLink = document.querySelector('.footer-link');
+    const isMultiplayerLobby = mode === 'multiplayer';
+
+    if (lobbyActionsEl) {
+        lobbyActionsEl.style.display = isMultiplayerLobby ? 'none' : 'flex';
+    }
+    if (friendsSectionEl) {
+        friendsSectionEl.style.display = isMultiplayerLobby ? 'block' : 'none';
+    }
+    if (heroLink) {
+        heroLink.style.display = isMultiplayerLobby ? 'none' : 'inline-block';
+    }
+    if (footerLink) {
+        footerLink.style.display = isMultiplayerLobby ? 'none' : 'block';
+    }
+}
+
 function showLobby() {
     lobbyEl.style.display = 'flex';
     msgEl.style.display = 'none';
     lobbyRoomCodeEl.textContent = roomCode;
+    const boardContainer = document.getElementById('board-container');
+    if (boardContainer) {
+        boardContainer.style.display = 'none';
+    }
+    boardEl.innerHTML = '';
+    resetLobbyButtons();
 
     // Initialize carousel
     currentCarouselIndex = Math.floor(Math.random() * totalCarouselImages);
@@ -396,19 +441,41 @@ function showLobby() {
         enterMultiplayerLobby();
     } else {
         // Fresh start - show actions, hide friends section
-        lobbyActionsEl.style.display = 'flex';
-        friendsSectionEl.style.display = 'none';
+        setLobbyMode('solo');
     }
 }
 
 function hideLobby() {
     lobbyEl.style.display = 'none';
+    const boardContainer = document.getElementById('board-container');
+    if (boardContainer) {
+        boardContainer.style.display = 'flex';
+    }
 }
 
 function enterMultiplayerLobby() {
     isMultiplayerMode = true;
-    friendsSectionEl.style.display = 'block';
+    setLobbyMode('multiplayer');
     lobbyRoomCodeEl.textContent = roomCode;
+    resetLobbyButtons();
+}
+
+function resetLobbyButtons() {
+    const soloBtn = document.getElementById('play-solo-btn');
+    if (soloBtn) {
+        soloBtn.disabled = false;
+        soloBtn.textContent = 'Play by Yourself';
+    }
+    const friendsBtn = document.getElementById('play-friends-btn');
+    if (friendsBtn) {
+        friendsBtn.disabled = false;
+        friendsBtn.textContent = 'Play with a Friend';
+    }
+    const lobbyBtn = document.getElementById('lobby-start-btn');
+    if (lobbyBtn) {
+        lobbyBtn.disabled = false;
+        lobbyBtn.textContent = 'Start Game';
+    }
 }
 
 // Global lobby button handlers (called from HTML onclick)
@@ -445,6 +512,43 @@ window.handleShareInvite = async function() {
             btn.textContent = 'Copied!';
             setTimeout(() => { btn.textContent = 'Share Invite'; }, 1500);
         }
+    }
+};
+
+async function copyToClipboard(text, buttonEl, successLabel = "Copied!") {
+    if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+    } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = text;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+    }
+    if (buttonEl) {
+        const originalText = buttonEl.textContent;
+        buttonEl.textContent = successLabel;
+        setTimeout(() => { buttonEl.textContent = originalText; }, 1500);
+    }
+}
+
+window.handleCopyRoomCode = async function() {
+    const btn = document.getElementById('copy-room-code-btn');
+    try {
+        await copyToClipboard(roomCode, btn);
+    } catch (e) {
+        console.error('Failed to copy room code:', e);
+    }
+};
+
+window.handleCopyRoomLink = async function() {
+    const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+    const btn = document.getElementById('copy-room-link-btn');
+    try {
+        await copyToClipboard(url, btn);
+    } catch (e) {
+        console.error('Failed to copy room link:', e);
     }
 };
 
@@ -639,10 +743,9 @@ function showGameOverScreen(scores, avatars) {
     startBtn.innerText = "Play Again";
     startBtn.style.display = 'block';
     startBtn.onclick = () => {
-        // Reset scores and go back to lobby
-        safeSend({ type: "RESET_GAME" });
+        // Start a new game immediately
         msgEl.style.display = 'none';
-        showLobby();
+        safeSend({ type: "START_GAME" });
     };
 }
 

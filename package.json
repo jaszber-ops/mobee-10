@@ -4,9 +4,9 @@
   "description": "",
   "main": "pwa-register.js",
   "scripts": {
-    "dev": "partykit dev",
+    "dev": "partykit dev --port 1999",
     "deploy": "partykit deploy",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",

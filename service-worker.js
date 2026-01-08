@@ -1,9 +1,11 @@
-const CACHE_NAME = 'mobee-v1.0.1';  // was v1.0.0
+const SW_VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const CACHE_NAME = `mobee-${SW_VERSION}`;
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/style.css',
-  '/script.js',
+  '/javascript.js',
+  '/version.js',
   '/manifest.json',
   '/assets/mobee_sprite.svg',
   '/assets/mobee_logo.png',
@@ -62,6 +64,31 @@ self.addEventListener('fetch', (event) => {
 
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  const networkFirstPaths = new Set([
+    '/index.html',
+    '/style.css',
+    '/javascript.js',
+    '/version.js'
+  ]);
+
+  if (networkFirstPaths.has(requestUrl.pathname)) {
+    event.respondWith(
+      fetch(new Request(event.request, { cache: 'no-store' }))
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, networkResponse.clone());
+              });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
 
