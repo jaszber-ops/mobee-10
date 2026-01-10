@@ -67,28 +67,43 @@ document.addEventListener('touchmove', (e) => {
 }, { passive: false });
 
 // --- 2. CONFIGURATION ---
-// The visual assets. Order must match server IDs (0-13)
-// Using sprite coordinates [col, row] from mobee_sprite.svg (0-indexed)
-// User provided 1-indexed coordinates: row_col, converted to 0-indexed [col-1, row-1]
-const SYMBOLS = [
-  { id: 0,  name: 'Helicopter', img: 'assets/symbols/helicopter.png', sprite: [5, 2] },
-  { id: 1,  name: 'UFO',        img: 'assets/symbols/ufo.png',        sprite: [4, 3] },
-  { id: 2,  name: 'Shark',      img: 'assets/symbols/shark.png',      sprite: [11, 4] },
-  { id: 3,  name: 'Pig',        img: 'assets/symbols/pig.png',        sprite: [10, 9] },
-  { id: 4,  name: 'Rhino',      img: 'assets/symbols/rhino.png',      sprite: [7, 9] },
-  { id: 5,  name: 'Pretzel',    img: 'assets/symbols/pretzel.png',    sprite: [8, 7] },
-  { id: 6,  name: 'Shoe',       img: 'assets/symbols/shoe.png',       sprite: [3, 0] },
-  { id: 7,  name: 'Sunglasses', img: 'assets/symbols/sunglasses.png', sprite: [12, 1] },
-  { id: 8,  name: 'Star',       img: 'assets/symbols/star.png',       sprite: [8, 9] },
-  { id: 9,  name: 'Elephant',   img: 'assets/symbols/elephant.png',   sprite: [12, 7] },
-  { id: 10, name: 'Lion',       img: 'assets/symbols/lion.png',       sprite: [0, 3] },
-  { id: 11, name: 'Sailboat',   img: 'assets/symbols/sailboat.png',   sprite: [5, 6] },
-  { id: 12, name: 'Cat',        img: 'assets/symbols/cat.png',        sprite: [9, 9] },
-  { id: 13, name: 'Dog',        img: 'assets/symbols/dog.png',        sprite: [7, 8] }
-];
+// All 30 available symbols - server picks 14 random ones each game
+// Symbol names map directly to assets/symbols/{name}.png
+const SYMBOLS = {
+  'dog': 'assets/symbols/dog.png',
+  'pigeon': 'assets/symbols/pigeon.png',
+  'mobius': 'assets/symbols/mobius.png',
+  'leaf': 'assets/symbols/leaf.png',
+  'cat': 'assets/symbols/cat.png',
+  'doll': 'assets/symbols/doll.png',
+  'elephant': 'assets/symbols/elephant.png',
+  'cherry': 'assets/symbols/cherry.png',
+  'star': 'assets/symbols/star.png',
+  'fan': 'assets/symbols/fan.png',
+  'lion': 'assets/symbols/lion.png',
+  'airplane': 'assets/symbols/airplane.png',
+  'ufo': 'assets/symbols/ufo.png',
+  'train': 'assets/symbols/train.png',
+  'rhino': 'assets/symbols/rhino.png',
+  'saturn': 'assets/symbols/saturn.png',
+  'pig': 'assets/symbols/pig.png',
+  'globe': 'assets/symbols/globe.png',
+  'helicopter': 'assets/symbols/helicopter.png',
+  'lightbulb': 'assets/symbols/lightbulb.png',
+  'shark': 'assets/symbols/shark.png',
+  'snowflake': 'assets/symbols/snowflake.png',
+  'shoe': 'assets/symbols/shoe.png',
+  'pawprint': 'assets/symbols/pawprint.png',
+  'sunglasses': 'assets/symbols/sunglasses.png',
+  'coffee': 'assets/symbols/coffee.png',
+  'sailboat': 'assets/symbols/sailboat.png',
+  'frenchhorn': 'assets/symbols/frenchhorn.png',
+  'flower': 'assets/symbols/flower.png',
+  'hourglass': 'assets/symbols/hourglass.png'
+};
 
-// Preload gameplay PNG symbols to avoid first-round pop-in
-SYMBOLS.forEach(s => { if (s.img) { const im = new Image(); im.src = s.img; } });
+// Preload all symbols to avoid first-round pop-in
+Object.values(SYMBOLS).forEach(src => { const im = new Image(); im.src = src; });
 
 
 // SVG sprite sheet parameters
@@ -1008,33 +1023,20 @@ function renderBoard(serverCards, isSpectator = false) {
 
         // Use server order exactly - no client-side shuffling
         // Both players must see identical cards!
-        cardSymbolIds.forEach((symbolId, i) => {
-            const symbolObj = SYMBOLS.find(s => s.id === symbolId);
-            if (!symbolObj) return; // Safety check
+        // Server now sends symbol names (strings) instead of IDs
+        cardSymbolIds.forEach((symbolName, i) => {
+            const symbolImg = SYMBOLS[symbolName];
+            if (!symbolImg) return; // Safety check
 
             const symContainer = document.createElement('div');
             symContainer.className = `symbol-container pos-${i}`;
-            symContainer.dataset.symbolId = symbolId;
+            symContainer.dataset.symbolId = symbolName;
             symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS[i]}deg)`;
 
-            // All symbols use sprite (PNG test removed)
-            if (false) {
-                // Use individual PNG
-                symContainer.innerHTML = `
-                    <img src="assets/dna.png" style="
-                        width: 100%;
-                        height: 100%;
-                        object-fit: contain;
-                        pointer-events: none;
-                        transition: transform 0.2s;
-                    ">
-                `;
-            } else {
-                // Gameplay symbols: use pre-rendered PNGs (more robust on iPhone/Safari)
-                symContainer.innerHTML = `
-                    <img class="game-symbol" src="${symbolObj.img}" alt="" draggable="false">
-                `;
-}
+            // Gameplay symbols: use pre-rendered PNGs
+            symContainer.innerHTML = `
+                <img class="game-symbol" src="${symbolImg}" alt="" draggable="false">
+            `;
 
             // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
             // Only enable clicks if NOT in spectator mode
@@ -1052,16 +1054,16 @@ function renderBoard(serverCards, isSpectator = false) {
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
                     // Vibrate all matching symbols across all cards (apply to inner sprite div)
-                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolId}"] img, .symbol-container[data-symbol-id="${symbolId}"] .symbol-sprite`).forEach(sprite => {
+                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolName}"] img, .symbol-container[data-symbol-id="${symbolName}"] .symbol-sprite`).forEach(sprite => {
                         sprite.classList.add('symbol-match');
                         setTimeout(() => sprite.classList.remove('symbol-match'), 500);
                     });
 
                     // Send Guess (server will handle correct/wrong)
-                    console.log("Clicking symbol:", symbolId, "on card:", cardIndex);
+                    console.log("Clicking symbol:", symbolName, "on card:", cardIndex);
                     safeSend({
                         type: "GUESS",
-                        symbol: symbolId,
+                        symbol: symbolName,
                         cardIndex: cardIndex,  // Send which card was clicked
                         sessionToken: sessionToken  // Server validates this
                     });
@@ -1071,55 +1073,24 @@ function renderBoard(serverCards, isSpectator = false) {
             cardEl.appendChild(symContainer);
         });
 
-        // Find the common symbol (the one that appears on all 3 cards)
-        // Each card has symbols at positions 0-6, we need to find which symbol appears on this card
-        // that also appears on the other two cards
-        const allSymbolsOnThisCard = cardSymbolIds;
-        const allSymbolsOnOtherCards = serverCards
-            .filter(otherCard => otherCard !== cardSymbolIds)
-            .flat();
-
-        const commonSymbol = allSymbolsOnThisCard.find(symbolId =>
-            allSymbolsOnOtherCards.filter(s => s === symbolId).length >= 2
-        );
-
-        if (commonSymbol !== undefined) {
-            const commonSymbolObj = SYMBOLS.find(s => s.id === commonSymbol);
-            if (commonSymbolObj) {
-                const [col, row] = commonSymbolObj.sprite;
-                const stickerSize = 10; // Small circle sticker
-                const scaleFactor = stickerSize / SPRITE_CELL_SIZE;
-
-                const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
-                const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
-
-                const bgX = -(cellLeft * scaleFactor);
-                const bgY = -(cellTop * scaleFactor);
-
-                const svgWidth = 841.89;
-                const svgHeight = 595.28;
-                const bgWidth = svgWidth * scaleFactor;
-                const bgHeight = svgHeight * scaleFactor;
-
-                // Create circle sticker with grayscale Møbee logo
-                const sticker = document.createElement('div');
-                sticker.className = 'card-symbol-sticker';
-                sticker.innerHTML = `
-                    <div style="
-                        width: ${stickerSize}px;
-                        height: ${stickerSize}px;
-                        background-image: url('assets/mobee_logo_sm.png');
-                        background-size: contain;
-                        background-repeat: no-repeat;
-                        background-position: center;
-                        border-radius: 50%;
-                        background-color: white;
-                        filter: grayscale(100%) opacity(0.2);
-                    "></div>
-                `;
-                cardEl.appendChild(sticker);
-            }
-        }
+        // Add small Møbee logo sticker to each card
+        const stickerSize = 10;
+        const sticker = document.createElement('div');
+        sticker.className = 'card-symbol-sticker';
+        sticker.innerHTML = `
+            <div style="
+                width: ${stickerSize}px;
+                height: ${stickerSize}px;
+                background-image: url('assets/mobee_logo_sm.png');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                border-radius: 50%;
+                background-color: white;
+                filter: grayscale(100%) opacity(0.2);
+            "></div>
+        `;
+        cardEl.appendChild(sticker);
 
         boardEl.appendChild(cardEl);
     });
@@ -1130,7 +1101,7 @@ function renderBoard(serverCards, isSpectator = false) {
 
 function handleWinner(data) {
     // data.winnerId = playerId of the winner
-    // data.winningSymbol = the correct symbol ID
+    // data.winningSymbol = the correct symbol name
     // data.scores = updated scores
 
     // Pause timer FIRST before updating scoreboard

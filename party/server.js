@@ -99,8 +99,10 @@ export default class MobeeServer {
     let state = await this.party.storage.get("gamestate");
 
     if (!state) {
+      const deckData = generateDeck();
       state = {
-        deck: generateDeck(),
+        deck: deckData.cards,
+        symbolSet: deckData.symbolSet,
         status: "waiting",
         scores: {},
         avatars: {},
@@ -290,6 +292,12 @@ export default class MobeeServer {
           // Reset deck position to start fresh with a new shuffle
           currentState.deckPositionIndex = null;
           currentState.shuffledDeckOrder = null;
+
+          // Generate a new deck with fresh random 14 symbols from the pool of 30
+          const deckData = generateDeck();
+          currentState.deck = deckData.cards;
+          currentState.symbolSet = deckData.symbolSet;
+          console.log("New game - selected symbols:", currentState.symbolSet);
 
           await this.startNewRound(currentState);
 
