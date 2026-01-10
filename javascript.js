@@ -420,7 +420,11 @@ function setLobbyMode(mode) {
 function showLobby() {
     lobbyEl.style.display = 'flex';
     msgEl.style.display = 'none';
-    lobbyRoomCodeEl.textContent = roomCode;
+    lobbyRoomCodeEl.value = roomCode;
+    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
+    if (lobbyRoomLinkEl) {
+        lobbyRoomLinkEl.value = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+    }
     const boardContainer = document.getElementById('board-container');
     if (boardContainer) {
         boardContainer.style.display = 'none';
@@ -456,7 +460,11 @@ function hideLobby() {
 function enterMultiplayerLobby() {
     isMultiplayerMode = true;
     setLobbyMode('multiplayer');
-    lobbyRoomCodeEl.textContent = roomCode;
+    lobbyRoomCodeEl.value = roomCode;
+    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
+    if (lobbyRoomLinkEl) {
+        lobbyRoomLinkEl.value = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+    }
     resetLobbyButtons();
 }
 
@@ -534,22 +542,54 @@ async function copyToClipboard(text, buttonEl, successLabel = "Copied!") {
 }
 
 window.handleCopyRoomCode = async function() {
-    const btn = document.getElementById('copy-room-code-btn');
+    const input = document.getElementById('lobby-room-code');
+    const codeValue = normalizeRoomCode(input ? input.value : roomCode) || roomCode;
+
+    if (input) {
+        input.value = codeValue;
+        input.select();
+        input.setSelectionRange(0, input.value.length); // iOS needs this
+    }
+
     try {
-        await copyToClipboard(roomCode, btn);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(codeValue);
+        } else if (input) {
+            document.execCommand('copy');
+        } else {
+            await copyToClipboard(codeValue, null);
+        }
     } catch (e) {
         console.error('Failed to copy room code:', e);
     }
 };
 
 window.handleCopyRoomLink = async function() {
-    const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    const btn = document.getElementById('copy-room-link-btn');
+    const codeValue = normalizeRoomCode(lobbyRoomCodeEl ? lobbyRoomCodeEl.value : roomCode);
+    const url = `${window.location.origin}${window.location.pathname}?room=${codeValue || roomCode}`;
     try {
-        await copyToClipboard(url, btn);
+        await copyToClipboard(url, null);
     } catch (e) {
         console.error('Failed to copy room link:', e);
     }
+};
+
+function normalizeRoomCode(rawValue) {
+    const value = (rawValue || '').trim().toUpperCase();
+    if (!value) return '';
+    const match = value.match(/[A-Z0-9]{4,6}/);
+    return match ? match[0] : value;
+}
+
+window.handleJoinRoomCode = function() {
+    const input = document.getElementById('lobby-room-code');
+    if (!input) return;
+    const code = normalizeRoomCode(input.value);
+    if (code.length < 4) {
+        alert('Please enter a valid room code');
+        return;
+    }
+    window.location.href = `${window.location.pathname}?room=${code}`;
 };
 
 window.handleLobbyStart = function() {
@@ -1450,14 +1490,79 @@ document.addEventListener('DOMContentLoaded', () => {
         inviteCopyHint.addEventListener('click', copyHandler);
     }
 
-    // Select all text in room code input when clicked
+    // Copy room code to clipboard when clicked (with iOS fallback)
     if (roomCodeInput) {
-        roomCodeInput.addEventListener('click', function() {
+        const copyRoomCode = async function() {
             this.select();
-        });
-        // Also select on focus (e.g., when tabbing to it)
+            this.setSelectionRange(0, this.value.length); // iOS needs this
+
+            const textToCopy = this.value;
+
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    console.log('Room code copied via clipboard API');
+                    // Visual feedback
+                    this.style.backgroundColor = '#3a4a2a';
+                    setTimeout(() => this.style.backgroundColor = '', 300);
+                    return;
+                } catch (err) {
+                    console.warn('Clipboard API failed:', err);
+                }
+            }
+
+            // Fallback for iOS Safari
+            try {
+                document.execCommand('copy');
+                console.log('Room code copied via execCommand');
+                this.style.backgroundColor = '#3a4a2a';
+                setTimeout(() => this.style.backgroundColor = '', 300);
+            } catch (err) {
+                console.error('All copy methods failed:', err);
+            }
+        };
+
+        roomCodeInput.addEventListener('click', copyRoomCode);
         roomCodeInput.addEventListener('focus', function() {
             this.select();
+        });
+    }
+
+    const lobbyCodeInput = document.getElementById('lobby-room-code');
+    if (lobbyCodeInput) {
+        lobbyCodeInput.addEventListener('focus', () => {
+            setTimeout(() => lobbyCodeInput.select(), 0);
+        });
+        lobbyCodeInput.addEventListener('click', () => {
+            window.handleCopyRoomCode();
+        });
+        lobbyCodeInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                window.handleJoinRoomCode();
+            }
+        });
+    }
+
+    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
+    if (lobbyRoomLinkEl) {
+        const copyLink = async () => {
+            lobbyRoomLinkEl.select();
+            lobbyRoomLinkEl.setSelectionRange(0, lobbyRoomLinkEl.value.length);
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(lobbyRoomLinkEl.value);
+                } else {
+                    document.execCommand('copy');
+                }
+            } catch (e) {
+                console.error('Failed to copy room link:', e);
+            }
+        };
+        lobbyRoomLinkEl.addEventListener('click', copyLink);
+        lobbyRoomLinkEl.addEventListener('focus', () => {
+            setTimeout(() => lobbyRoomLinkEl.select(), 0);
         });
     }
 });
