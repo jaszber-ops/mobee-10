@@ -573,8 +573,10 @@ window.handleCopyRoomLink = async function() {
     const url = `${window.location.origin}${window.location.pathname}?room=${codeValue || roomCode}`;
     try {
         await copyToClipboard(url, null);
-        // Visual feedback - flash blue
+        // Visual feedback - focus input (shows blue border) and flash background
         if (lobbyRoomLinkEl) {
+            lobbyRoomLinkEl.focus();
+            lobbyRoomLinkEl.select();
             lobbyRoomLinkEl.style.backgroundColor = '#e0f0ff';
             setTimeout(() => lobbyRoomLinkEl.style.backgroundColor = '', 300);
         }
