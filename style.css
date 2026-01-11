@@ -665,9 +665,10 @@ a.stay-btn {
 /* Lobby hex cards - uses same layout as #game-board */
 .lobby-cards {
     position: relative;
-    width: var(--board-size);
-    height: var(--board-size);
+    width: 600px;
+    height: 600px;
     margin: 0 auto;
+    transform-origin: center center;
 }
 
 .lobby-card-content {
