@@ -671,18 +671,17 @@ a.stay-btn {
     margin: 0 auto;
 }
 
-.lobby-card {
+/* Override absolute positioning from .card for lobby cards */
+.lobby-card.card {
     position: absolute;
     width: 45%;
+    height: auto;
     aspect-ratio: 260 / 300;
-    cursor: pointer;
-    transition: transform 0.2s ease, filter 0.2s ease;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+    transform: none;
 }
 
 .lobby-card:hover {
     transform: scale(1.05);
-    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.2));
 }
 
 .lobby-card:active {
@@ -709,20 +708,6 @@ a.stay-btn {
     right: 5%;
 }
 
-.lobby-card .card-bg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.lobby-card .card-shape {
-    fill: #FFFAF0;
-    stroke: #F9CE79;
-    stroke-width: 3;
-}
-
 .lobby-card-content {
     position: absolute;
     top: 0;
@@ -737,13 +722,14 @@ a.stay-btn {
     pointer-events: none;
 }
 
-.lobby-card-icon {
-    font-size: clamp(2.5rem, 8vw, 4rem);
-    line-height: 1;
+img.lobby-card-icon {
+    width: 50%;
+    height: auto;
+    object-fit: contain;
 }
 
 .lobby-card-label {
-    font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+    font-size: clamp(0.75rem, 2.2vw, 1rem);
     font-weight: 700;
     color: #333;
     text-align: center;
