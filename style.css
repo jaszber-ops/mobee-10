@@ -1021,6 +1021,17 @@ img.lobby-card-icon {
     margin-top: 2px;
 }
 
+.friends-invite-link {
+    color: #4a90e2;
+    cursor: pointer;
+    pointer-events: auto;
+    text-decoration: underline;
+}
+
+.friends-invite-link:hover {
+    color: #357abd;
+}
+
 /* Avatar pop-in animation when new player joins */
 @keyframes avatarPopIn {
     0% { transform: scale(0); opacity: 0; }
