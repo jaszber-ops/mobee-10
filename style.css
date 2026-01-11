@@ -643,8 +643,8 @@ a.stay-btn {
         padding-right: 12px;
     }
 
-    /* Hide footer during gameplay to maximize play area */
-    body.playing .footer-link { display: none; }
+    /* Hide footer (store link + version) on mobile */
+    .footer-link { display: none; }
 }
 
 /* Lobby styles */
