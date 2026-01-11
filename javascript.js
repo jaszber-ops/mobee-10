@@ -1595,10 +1595,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Auto-submit when 6 characters are entered (paste or typing)
         lobbyCodeInput.addEventListener('input', () => {
             const code = lobbyCodeInput.value.trim().toUpperCase();
-            if (code.length === 6 && /^[A-Z0-9]{6}$/.test(code)) {
-                // Only auto-submit if the code is different from current room
-                if (code !== roomCode) {
-                    window.handleJoinRoomCode();
+            console.log('Input event:', code, 'length:', code.length, 'current room:', roomCode);
+            if (code.length >= 6) {
+                const normalizedCode = code.substring(0, 6);
+                if (/^[A-Z0-9]{6}$/.test(normalizedCode)) {
+                    // Only auto-submit if the code is different from current room
+                    if (normalizedCode !== roomCode) {
+                        console.log('Auto-submitting room code:', normalizedCode);
+                        switchToRoom(normalizedCode);
+                    }
                 }
             }
         });
