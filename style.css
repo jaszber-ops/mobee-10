@@ -1096,7 +1096,7 @@ img.lobby-card-icon {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 12%;
+    width: 25%;
     height: auto;
     filter: grayscale(100%) opacity(0.2);
 }
