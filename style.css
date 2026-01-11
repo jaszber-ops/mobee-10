@@ -673,8 +673,8 @@ a.stay-btn {
 /* Override absolute positioning from .card for lobby cards */
 .lobby-card.card {
     position: absolute;
-    width: 48%;
-    height: auto;
+    width: 48% !important;
+    height: auto !important;
     aspect-ratio: 260 / 300;
 }
 
