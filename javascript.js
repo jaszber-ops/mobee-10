@@ -343,10 +343,10 @@ function setupConnectionHandlers() {
 
 // Connection Feedback & Room Sharing
 conn.addEventListener("open", () => {
-    console.log("Connected to room:", roomCode);
+    console.log("Connected to room:", roomCode, "isSoloRequest:", isSoloRequest, "isLobbyRequest:", isLobbyRequest);
 
-    // Update URL to show room code (without reloading) - but not for solo mode
-    if (!isSoloRequest) {
+    // Update URL to show room code - but NOT for solo mode or lobby mode
+    if (!isSoloRequest && !isLobbyRequest) {
         const currentUrl = new URL(window.location);
         if (currentUrl.searchParams.get('room') !== roomCode) {
             currentUrl.searchParams.set('room', roomCode);
@@ -355,8 +355,10 @@ conn.addEventListener("open", () => {
     }
 
     // Clear any error messages
-    if (msgEl.style.display === 'block' && msgTitle.innerText === "Connection Error") {
-        msgEl.style.display = 'none';
+    const msgElLocal = document.getElementById('message');
+    const msgTitleLocal = document.getElementById('msg-title');
+    if (msgElLocal && msgElLocal.style.display === 'block' && msgTitleLocal && msgTitleLocal.innerText === "Connection Error") {
+        msgElLocal.style.display = 'none';
     }
 
     // Send avatar to server
@@ -367,10 +369,8 @@ conn.addEventListener("open", () => {
 
     // Solo mode: auto-start the game
     if (isSoloRequest) {
-        console.log("Solo mode - auto-starting game");
-        setTimeout(() => {
-            safeSend({ type: "START_GAME" });
-        }, 100);
+        console.log("Solo mode - sending START_GAME");
+        safeSend({ type: "START_GAME" });
     } else {
         // Show lobby instead of modal
         showLobby();
