@@ -643,9 +643,8 @@ a.stay-btn {
         padding-right: 12px;
     }
 
-    /* Hide store elements on mobile, keep version and trippplecard link */
-    .footer-store-img,
-    .footer-store-link { display: none; }
+    /* Hide footer (store link + version) on mobile */
+    .footer-link { display: none; }
 }
 
 /* Lobby styles */
