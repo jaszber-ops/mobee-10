@@ -1111,7 +1111,7 @@ img.lobby-card-icon {
 /* Symbol positions for 12-symbol card */
 /* Inner cardinal (close to center) - 35% from center */
 .card-12-symbols .symbol-12.pos-0-inner {
-    top: 30%;
+    top: 35%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(180deg);
 }
@@ -1121,7 +1121,7 @@ img.lobby-card-icon {
     transform: translate(-50%, -50%) rotate(-90deg);
 }
 .card-12-symbols .symbol-12.pos-180-inner {
-    top: 70%;
+    top: 65%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(0deg);
 }
