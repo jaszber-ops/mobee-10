@@ -330,6 +330,13 @@ function setupConnectionHandlers() {
 conn.addEventListener("open", () => {
     console.log("Connected to room:", roomCode);
 
+    // Update URL to show room code (without reloading)
+    const currentUrl = new URL(window.location);
+    if (currentUrl.searchParams.get('room') !== roomCode) {
+        currentUrl.searchParams.set('room', roomCode);
+        history.replaceState(null, null, currentUrl);
+    }
+
     // Clear any error messages
     if (msgEl.style.display === 'block' && msgTitle.innerText === "Connection Error") {
         msgEl.style.display = 'none';

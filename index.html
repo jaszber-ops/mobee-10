@@ -98,7 +98,10 @@
         <div class="lobby-row">
             <div class="lobby-label">Room Link</div>
             <div class="lobby-code-row">
-                <input type="text" id="lobby-room-link" class="lobby-link-input" readonly>
+                <div class="lobby-code-input-wrap">
+                    <input type="text" id="lobby-room-link" class="lobby-link-input" readonly>
+                    <span class="lobby-link-icon" aria-hidden="true" onclick="handleCopyRoomLink()"></span>
+                </div>
             </div>
         </div>
 
