@@ -1151,11 +1151,9 @@ function renderBoard(serverCards, isSpectator = false) {
                     e.stopPropagation();
                     e.preventDefault();
 
-                    // Visual feedback immediately
-                    symContainer.style.transform = symContainer.style.transform.replace(')', ' scale(1.3)');
-                    setTimeout(() => {
-                        symContainer.style.transform = symContainer.style.transform.replace(' scale(1.3)', '');
-                    }, 200);
+                    // Visual feedback - use class to preserve rotation
+                    symContainer.classList.add('symbol-clicked');
+                    setTimeout(() => symContainer.classList.remove('symbol-clicked'), 200);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
