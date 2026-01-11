@@ -1111,7 +1111,7 @@ img.lobby-card-icon {
 /* Symbol positions for 12-symbol card */
 /* Inner cardinal (close to center) - 35% from center */
 .card-12-symbols .symbol-12.pos-0-inner {
-    top: 25%;
+    top: 30%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(180deg);
 }
@@ -1121,7 +1121,7 @@ img.lobby-card-icon {
     transform: translate(-50%, -50%) rotate(-90deg);
 }
 .card-12-symbols .symbol-12.pos-180-inner {
-    top: 75%;
+    top: 70%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(0deg);
 }
@@ -1133,23 +1133,23 @@ img.lobby-card-icon {
 
 /* Outer cardinal (further out) - 55% from center */
 .card-12-symbols .symbol-12.pos-0-outer {
-    top: 10%;
+    top: 15%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(180deg);
 }
 .card-12-symbols .symbol-12.pos-90-outer {
     top: 50%;
-    left: 85%;
+    left: 90%;
     transform: translate(-50%, -50%) rotate(-90deg);
 }
 .card-12-symbols .symbol-12.pos-180-outer {
-    top: 90%;
+    top: 85%;
     left: 50%;
     transform: translate(-50%, -50%) rotate(0deg);
 }
 .card-12-symbols .symbol-12.pos-270-outer {
     top: 50%;
-    left: 15%;
+    left: 10%;
     transform: translate(-50%, -50%) rotate(90deg);
 }
 
