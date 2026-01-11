@@ -628,10 +628,10 @@ function updateLobbyPlayers(scores, avatars) {
     currentHostId = playerIds.sort()[0];
     const isHost = playerId === currentHostId;
 
-    // Build player avatars
+    // Build player avatars - same size, border color indicates current player
     lobbyPlayersEl.innerHTML = playerIds.map(id => {
         const isMe = id === playerId;
-        const avatarHtml = getAvatarHTML(avatars[id], 40, isMe);
+        const avatarHtml = getAvatarHTML(avatars[id], 36, { clickable: isMe, isMe });
         return avatarHtml;
     }).join('');
 
@@ -1253,8 +1253,10 @@ function handleWrongGuess(data) {
 }
 
 // Helper function to create avatar sprite HTML
-function getAvatarHTML(avatarCoords, size = 32, clickable = false) {
+function getAvatarHTML(avatarCoords, size = 32, options = {}) {
     if (!avatarCoords) return '';
+    const { clickable = false, isMe = false } = typeof options === 'boolean' ? { clickable: options } : options;
+
     const [col, row] = avatarCoords.split(',').map(Number);
 
     // SVG grid parameters (same as initializeAvatarGrid)
@@ -1279,8 +1281,10 @@ function getAvatarHTML(avatarCoords, size = 32, clickable = false) {
 
     const clickStyle = clickable ? 'cursor: pointer;' : '';
     const clickHandler = clickable ? 'onclick="openAvatarModal()"' : '';
+    // Use green border for current player, default gray for others
+    const borderColor = isMe ? '#BEC887' : '#ccc';
 
-    return `<span class="avatar-sprite" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; ${clickStyle}" ${clickHandler}></span>`;
+    return `<span class="avatar-sprite" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; border-color: ${borderColor}; ${clickStyle}" ${clickHandler}></span>`;
 }
 
 function updateScoreboard(scores, avatars = {}) {
@@ -1300,10 +1304,10 @@ function updateScoreboard(scores, avatars = {}) {
         }
         previousScore = score;
 
-        // Make your avatar bigger (40px vs 28px for others) and clickable only in lobby
-        const avatarSize = id === playerId ? 40 : 28;
-        const isClickable = id === playerId && !gameStartTime; // Only your own avatar is clickable, and only in lobby
-        const avatar = getAvatarHTML(avatars[id], avatarSize, isClickable);
+        // Same size for all, border color indicates current player
+        const isMe = id === playerId;
+        const isClickable = isMe && !gameStartTime; // Only your own avatar is clickable, and only in lobby
+        const avatar = getAvatarHTML(avatars[id], 36, { clickable: isClickable, isMe });
 
         // In lobby (no gameStartTime), only show avatar. During game, show avatar + score
         if (gameStartTime) {
