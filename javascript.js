@@ -1057,8 +1057,9 @@ conn.addEventListener("message", (event) => {
 // requestStartGame now defined globally above
 
 // --- 5. RENDER THE BOARD (Server Driven) ---
-// serverCards is: [[0,1,2,3,4,5,6], [0,7,8...], ...]
-const ROTATIONS = [0, 180, -120, -60, 0, 60, 120];
+// serverCards is: [[symbol1, symbol2, ...], ...]
+// 12-symbol card positions (matching SYMBOL_POSITIONS_12)
+const ROTATIONS_12 = [180, 180, -135, -90, -90, -45, 0, 0, 45, 90, 90, 135];
 
 // Scale the game board to fit available space
 const BASE_BOARD_SIZE = 600; // Fixed base size in pixels
@@ -1115,27 +1116,33 @@ function renderBoard(serverCards, isSpectator = false) {
         const svgBg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svgBg.setAttribute("class", "card-bg");
         svgBg.setAttribute("viewBox", "0 0 260 300");
-        // Hexagon path with all 6 corners rounded using quadratic bezier curves
-        // r=15 corner radius, viewBox 260x300, center at 130,150
         svgBg.innerHTML = `<path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />`;
         cardEl.appendChild(svgBg);
 
+        // Create 12-symbol container
+        const symbolsContainer = document.createElement('div');
+        symbolsContainer.className = 'card-12-symbols';
+
+        // Add center logo
+        const centerLogo = document.createElement('img');
+        centerLogo.src = 'assets/mobee_logo_sm.png';
+        centerLogo.className = 'center-logo';
+        centerLogo.alt = 'Møbee';
+        centerLogo.draggable = false;
+        symbolsContainer.appendChild(centerLogo);
+
         // Use server order exactly - no client-side shuffling
         // Both players must see identical cards!
-        // Server now sends symbol names (strings) instead of IDs
         cardSymbolIds.forEach((symbolName, i) => {
             const symbolImg = SYMBOLS[symbolName];
             if (!symbolImg) return; // Safety check
 
-            const symContainer = document.createElement('div');
-            symContainer.className = `symbol-container pos-${i}`;
+            const symContainer = document.createElement('img');
+            symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
+            symContainer.src = symbolImg;
+            symContainer.alt = symbolName;
+            symContainer.draggable = false;
             symContainer.dataset.symbolId = symbolName;
-            symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS[i]}deg)`;
-
-            // Gameplay symbols: use pre-rendered PNGs
-            symContainer.innerHTML = `
-                <img class="game-symbol" src="${symbolImg}" alt="" draggable="false">
-            `;
 
             // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
             // Only enable clicks if NOT in spectator mode
@@ -1145,15 +1152,16 @@ function renderBoard(serverCards, isSpectator = false) {
                     e.preventDefault();
 
                     // Visual feedback immediately
-                    const spriteElement = symContainer.querySelector('div, img');
-                    spriteElement.style.transform = 'scale(1.5)';
-                    setTimeout(() => spriteElement.style.transform = '', 200);
+                    symContainer.style.transform = symContainer.style.transform.replace(')', ' scale(1.3)');
+                    setTimeout(() => {
+                        symContainer.style.transform = symContainer.style.transform.replace(' scale(1.3)', '');
+                    }, 200);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
-                    // Vibrate all matching symbols across all cards (apply to inner sprite div)
-                    document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolName}"] img, .symbol-container[data-symbol-id="${symbolName}"] .symbol-sprite`).forEach(sprite => {
+                    // Vibrate all matching symbols across all cards
+                    document.querySelectorAll(`[data-symbol-id="${symbolName}"]`).forEach(sprite => {
                         sprite.classList.add('symbol-match');
                         setTimeout(() => sprite.classList.remove('symbol-match'), 500);
                     });
@@ -1163,34 +1171,16 @@ function renderBoard(serverCards, isSpectator = false) {
                     safeSend({
                         type: "GUESS",
                         symbol: symbolName,
-                        cardIndex: cardIndex,  // Send which card was clicked
-                        sessionToken: sessionToken  // Server validates this
+                        cardIndex: cardIndex,
+                        sessionToken: sessionToken
                     });
                 };
             }
 
-            cardEl.appendChild(symContainer);
+            symbolsContainer.appendChild(symContainer);
         });
 
-        // Add small Møbee logo sticker to each card
-        const stickerSize = 10;
-        const sticker = document.createElement('div');
-        sticker.className = 'card-symbol-sticker';
-        sticker.innerHTML = `
-            <div style="
-                width: ${stickerSize}px;
-                height: ${stickerSize}px;
-                background-image: url('assets/mobee_logo_sm.png');
-                background-size: contain;
-                background-repeat: no-repeat;
-                background-position: center;
-                border-radius: 50%;
-                background-color: white;
-                filter: grayscale(100%) opacity(0.2);
-            "></div>
-        `;
-        cardEl.appendChild(sticker);
-
+        cardEl.appendChild(symbolsContainer);
         boardEl.appendChild(cardEl);
     });
 
