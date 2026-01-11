@@ -1093,10 +1093,10 @@ img.lobby-card-icon {
 
 .card-12-symbols .center-logo {
     position: absolute;
-    top: 50%;
+    bottom: 7.5%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    width: 25%;
+    transform: translateX(-50%);
+    width: 8%;
     height: auto;
     filter: grayscale(100%) opacity(0.2);
 }
