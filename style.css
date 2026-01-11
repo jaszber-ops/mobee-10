@@ -699,6 +699,11 @@ img.lobby-card-icon {
     filter: grayscale(100%) opacity(0.2);
 }
 
+/* Lobby card border colors: red, yellow, green */
+.lobby-card:nth-child(1) .card-shape { stroke: #E6A07F; } /* Play Solo - red */
+.lobby-card:nth-child(2) .card-shape { stroke: #F9CE79; } /* Get the Cards - yellow */
+.lobby-card:nth-child(3) .card-shape { stroke: #BEC887; } /* Play with Friends - green */
+
 .lobby-card-label {
     font-size: clamp(0.7rem, 2vw, 0.95rem);
     font-weight: 700;
