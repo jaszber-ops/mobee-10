@@ -944,6 +944,19 @@ img.lobby-card-icon {
     cursor: pointer;
 }
 
+.friends-code-input:hover,
+.friends-link-input:hover {
+    border-color: #e5b85a;
+    background: #fffef8;
+}
+
+.friends-code-input:focus,
+.friends-link-input:focus {
+    outline: none;
+    border-color: #4a90e2;
+    background: #f8fbff;
+}
+
 .friends-copy-icon {
     position: absolute;
     right: 6px;

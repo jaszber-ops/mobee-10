@@ -1523,6 +1523,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     document.execCommand('copy');
                 }
+                // Visual feedback - flash blue like room code
+                lobbyRoomLinkEl.style.backgroundColor = '#e0f0ff';
+                setTimeout(() => lobbyRoomLinkEl.style.backgroundColor = '', 300);
             } catch (e) {
                 console.error('Failed to copy room link:', e);
             }
