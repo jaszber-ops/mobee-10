@@ -90,21 +90,27 @@
                 </svg>
                 <div class="friends-card-content">
                     <div class="friends-card-label">Room Code</div>
-                    <input type="text" id="lobby-room-code" class="friends-code-input" maxlength="6"
-                           style="text-transform: uppercase;" enterkeyhint="go" inputmode="text" autocapitalize="characters"
-                           onclick="event.stopPropagation()">
+                    <div class="friends-input-wrap">
+                        <input type="text" id="lobby-room-code" class="friends-code-input" maxlength="6"
+                               style="text-transform: uppercase;" enterkeyhint="go" inputmode="text" autocapitalize="characters"
+                               onclick="event.stopPropagation()">
+                        <span class="friends-copy-icon" onclick="event.stopPropagation(); handleCopyRoomCode()"></span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Card 2: Room Link + Send Invite -->
-            <div class="card friends-card" onclick="handleShareInvite()">
+            <!-- Card 2: Room Link -->
+            <div class="card friends-card" onclick="handleCopyRoomLink()">
                 <svg class="card-bg" viewBox="0 0 260 300">
                     <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
                 </svg>
                 <div class="friends-card-content">
-                    <div class="friends-card-label">Send Invite</div>
-                    <input type="text" id="lobby-room-link" class="friends-link-input" readonly
-                           onclick="event.stopPropagation(); handleCopyRoomLink()">
+                    <div class="friends-card-label">Room Link</div>
+                    <div class="friends-input-wrap">
+                        <input type="text" id="lobby-room-link" class="friends-link-input" readonly
+                               onclick="event.stopPropagation(); handleCopyRoomLink()">
+                        <span class="friends-copy-icon" onclick="event.stopPropagation(); handleCopyRoomLink()"></span>
+                    </div>
                 </div>
             </div>
 
