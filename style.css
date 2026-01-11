@@ -662,54 +662,12 @@ a.stay-btn {
     padding: 16px;
 }
 
-/* Lobby hex cards - arranged like gameplay */
+/* Lobby hex cards - uses same layout as #game-board */
 .lobby-cards {
     position: relative;
-    width: min(500px, 90vw);
-    height: min(500px, 90vw);
+    width: var(--board-size);
+    height: var(--board-size);
     margin: 0 auto;
-}
-
-/* Override absolute positioning from .card for lobby cards */
-.lobby-card.card {
-    position: absolute;
-    width: 55% !important;
-    height: auto !important;
-    aspect-ratio: 260 / 300;
-}
-
-/* Position cards like the game board - triangular arrangement, meeting in center */
-/* Card 1: top center (Play Solo) */
-.lobby-card:nth-child(1) {
-    top: 0;
-    left: 50%;
-    transform: translate(-50%, 0);
-}
-.lobby-card:nth-child(1):hover {
-    transform: translate(-50%, 0) scale(1.05);
-    z-index: 10;
-}
-
-/* Card 2: bottom right (Get the Cards) */
-.lobby-card:nth-child(2) {
-    bottom: 0;
-    right: 0;
-    transform: none;
-}
-.lobby-card:nth-child(2):hover {
-    transform: scale(1.05);
-    z-index: 10;
-}
-
-/* Card 3: bottom left (Play with Friends) */
-.lobby-card:nth-child(3) {
-    bottom: 0;
-    left: 0;
-    transform: none;
-}
-.lobby-card:nth-child(3):hover {
-    transform: scale(1.05);
-    z-index: 10;
 }
 
 .lobby-card-content {
