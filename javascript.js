@@ -234,6 +234,9 @@ const PARTYKIT_HOST = partykitOverride
 let roomCode = urlParams.get('room');
 let conn = null;
 
+// Check if user clicked logo to go to preview (?preview parameter)
+const isPreviewRequest = urlParams.has('preview');
+
 // Check if user clicked logo to go to lobby (?lobby parameter)
 const isLobbyRequest = urlParams.has('lobby');
 if (isLobbyRequest) {
@@ -372,6 +375,10 @@ const lobbyStartBtn = document.getElementById('lobby-start-btn');
 const lobbyWaitingEl = document.getElementById('lobby-waiting');
 const shareInviteBtn = document.getElementById('share-invite-btn');
 
+// Preview Elements
+const previewEl = document.getElementById('preview');
+const previewCardsEl = document.getElementById('preview-cards');
+
 // Game Timer
 let gameStartTime = null;
 let gameTimerInterval = null;
@@ -438,6 +445,12 @@ function setLobbyMode(mode) {
 }
 
 function showLobby() {
+    // Check if preview mode
+    if (isPreviewRequest) {
+        showPreview();
+        return;
+    }
+
     lobbyEl.style.display = 'flex';
     msgEl.style.display = 'none';
     lobbyRoomCodeEl.value = roomCode;
@@ -460,6 +473,80 @@ function showLobby() {
         // Fresh start - show lobby cards
         setLobbyMode('solo');
     }
+}
+
+// 12-symbol card data (Level 2 - harder)
+const LEVEL2_CARDS = [
+    ['pawprint', 'shoe', 'airplane', 'star', 'coffee', 'lightbulb', 'rhino', 'train', 'sunglasses', 'hourglass', 'sailboat', 'shark'],
+    ['shoe', 'saturn', 'pawprint', 'snowflake', 'fan', 'airplane', 'lion', 'dog', 'doll', 'helicopter', 'lightbulb', 'mobius'],
+    ['mobius', 'snowflake', 'doll', 'shoe', 'sunglasses', 'globe', 'cherry', 'elephant', 'hourglass', 'train', 'frenchhorn', 'pig'],
+    ['train', 'leaf', 'elephant', 'rhino', 'frenchhorn', 'lightbulb', 'cat', 'saturn', 'fan', 'ufo', 'snowflake', 'sailboat'],
+    ['sailboat', 'pig', 'leaf', 'pawprint', 'pigeon', 'snowflake', 'globe', 'helicopter', 'ufo', 'sunglasses', 'lion', 'coffee'],
+    ['hourglass', 'dog', 'rhino', 'mobius', 'globe', 'fan', 'pawprint', 'flower', 'shark', 'ufo', 'frenchhorn', 'pigeon'],
+    ['dog', 'lion', 'star', 'lightbulb', 'cherry', 'leaf', 'doll', 'frenchhorn', 'cat', 'sunglasses', 'shark', 'pigeon'],
+    ['helicopter', 'elephant', 'doll', 'pig', 'hourglass', 'sailboat', 'cat', 'flower', 'fan', 'pigeon', 'airplane', 'star'],
+    ['flower', 'shark', 'saturn', 'mobius', 'lion', 'cat', 'airplane', 'cherry', 'coffee', 'pig', 'train', 'ufo'],
+    ['star', 'dog', 'shoe', 'saturn', 'helicopter', 'cherry', 'elephant', 'rhino', 'leaf', 'coffee', 'flower', 'globe']
+];
+
+// Symbol position classes for 12-symbol layout
+const SYMBOL_POSITIONS_12 = [
+    'pos-0-inner',    // 0: top inner
+    'pos-0-outer',    // 1: top outer
+    'pos-45',         // 2: top-right diagonal
+    'pos-90-inner',   // 3: right inner
+    'pos-90-outer',   // 4: right outer
+    'pos-135',        // 5: bottom-right diagonal
+    'pos-180-inner',  // 6: bottom inner
+    'pos-180-outer',  // 7: bottom outer
+    'pos-225',        // 8: bottom-left diagonal
+    'pos-270-inner',  // 9: left inner
+    'pos-270-outer',  // 10: left outer
+    'pos-315'         // 11: top-left diagonal
+];
+
+function showPreview() {
+    previewEl.style.display = 'flex';
+    lobbyEl.style.display = 'none';
+    msgEl.style.display = 'none';
+    const boardContainer = document.getElementById('board-container');
+    if (boardContainer) {
+        boardContainer.style.display = 'none';
+    }
+
+    // Generate 3 random preview cards
+    renderPreviewCards();
+}
+
+function renderPreviewCards() {
+    if (!previewCardsEl) return;
+
+    // Pick 3 random cards from LEVEL2_CARDS
+    const shuffled = [...LEVEL2_CARDS].sort(() => Math.random() - 0.5);
+    const selectedCards = shuffled.slice(0, 3);
+
+    previewCardsEl.innerHTML = selectedCards.map((symbols, cardIndex) => {
+        // Shuffle symbols within each card for variety
+        const shuffledSymbols = [...symbols].sort(() => Math.random() - 0.5);
+
+        const symbolsHtml = shuffledSymbols.map((symbolName, i) => {
+            const src = SYMBOLS[symbolName] || `assets/symbols/${symbolName}.png`;
+            const posClass = SYMBOL_POSITIONS_12[i];
+            return `<img src="${src}" class="symbol-12 ${posClass}" alt="${symbolName}" draggable="false">`;
+        }).join('');
+
+        return `
+            <div class="card preview-card">
+                <svg class="card-bg" viewBox="0 0 260 300">
+                    <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
+                </svg>
+                <div class="card-12-symbols">
+                    <img src="assets/mobee_logo_sm.png" class="center-logo" alt="Møbee" draggable="false">
+                    ${symbolsHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function hideLobby() {

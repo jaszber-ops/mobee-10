@@ -1,3 +1,3 @@
 // Møbee Multi - Version
-export const VERSION = '1.4.35';
+export const VERSION = '1.4.36';
 export const BUILD_DATE = new Date().toISOString();
