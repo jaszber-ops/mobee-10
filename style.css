@@ -1024,15 +1024,22 @@ img.lobby-card-icon {
     margin-top: 2px;
 }
 
-.friends-invite-link {
-    color: #4a90e2;
+.friends-invite-btn {
+    background: var(--btn-blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: clamp(0.5rem, 1.3vw, 0.65rem);
+    font-weight: 700;
     cursor: pointer;
     pointer-events: auto;
-    text-decoration: underline;
+    margin-top: 4px;
+    width: auto;
 }
 
-.friends-invite-link:hover {
-    color: #357abd;
+.friends-invite-btn:hover {
+    background: #357abd;
 }
 
 /* Avatar pop-in animation when new player joins */
