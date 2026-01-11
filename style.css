@@ -663,6 +663,93 @@ a.stay-btn {
     text-align: center;
 }
 
+/* Lobby hex cards - arranged like gameplay */
+.lobby-cards {
+    position: relative;
+    width: min(500px, 90vw);
+    height: min(500px, 90vw);
+    margin: 0 auto;
+}
+
+.lobby-card {
+    position: absolute;
+    width: 45%;
+    aspect-ratio: 260 / 300;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+.lobby-card:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.2));
+}
+
+.lobby-card:active {
+    transform: scale(0.98);
+}
+
+/* Position cards like the game board - triangular arrangement */
+.lobby-card:nth-child(1) {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.lobby-card:nth-child(1):hover {
+    transform: translateX(-50%) scale(1.05);
+}
+
+.lobby-card:nth-child(2) {
+    bottom: 5%;
+    left: 5%;
+}
+
+.lobby-card:nth-child(3) {
+    bottom: 5%;
+    right: 5%;
+}
+
+.lobby-card .card-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.lobby-card .card-shape {
+    fill: #FFFAF0;
+    stroke: #F9CE79;
+    stroke-width: 3;
+}
+
+.lobby-card-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.lobby-card-icon {
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    line-height: 1;
+}
+
+.lobby-card-label {
+    font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+    font-weight: 700;
+    color: #333;
+    text-align: center;
+    padding: 0 10%;
+}
+
 .lobby-row {
     margin: 18px 0;
 }

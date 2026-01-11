@@ -354,15 +354,13 @@ const msgBody = document.getElementById('msg-body');
 
 // Lobby Elements
 const lobbyEl = document.getElementById('lobby');
-const lobbyActionsEl = document.getElementById('lobby-actions');
+const lobbyCardsEl = document.getElementById('lobby-cards');
 const friendsSectionEl = document.getElementById('friends-section');
 const lobbyRoomCodeEl = document.getElementById('lobby-room-code');
 const lobbyPlayersEl = document.getElementById('lobby-players');
 const lobbyStartBtn = document.getElementById('lobby-start-btn');
 const lobbyWaitingEl = document.getElementById('lobby-waiting');
 const shareInviteBtn = document.getElementById('share-invite-btn');
-const playSoloBtn = document.getElementById('play-solo-btn');
-const playFriendsBtn = document.getElementById('play-friends-btn');
 
 // Game Timer
 let gameStartTime = null;
@@ -414,18 +412,14 @@ let isMultiplayerMode = false;
 let currentHostId = null;
 
 function setLobbyMode(mode) {
-    const heroLink = document.querySelector('.lobby-hero-link');
     const footerLink = document.querySelector('.footer-link');
     const isMultiplayerLobby = mode === 'multiplayer';
 
-    if (lobbyActionsEl) {
-        lobbyActionsEl.style.display = isMultiplayerLobby ? 'none' : 'flex';
+    if (lobbyCardsEl) {
+        lobbyCardsEl.style.display = isMultiplayerLobby ? 'none' : 'block';
     }
     if (friendsSectionEl) {
         friendsSectionEl.style.display = isMultiplayerLobby ? 'block' : 'none';
-    }
-    if (heroLink) {
-        heroLink.style.display = isMultiplayerLobby ? 'none' : 'inline-block';
     }
     if (footerLink) {
         footerLink.style.display = isMultiplayerLobby ? 'none' : 'block';
@@ -446,10 +440,6 @@ function showLobby() {
     }
     boardEl.innerHTML = '';
     resetLobbyButtons();
-
-    // Initialize carousel
-    currentCarouselIndex = Math.floor(Math.random() * totalCarouselImages);
-    updateCarouselImage();
 
     // Check if we joined via a room link (someone else's room)
     const urlParams = new URLSearchParams(window.location.search);
@@ -484,16 +474,6 @@ function enterMultiplayerLobby() {
 }
 
 function resetLobbyButtons() {
-    const soloBtn = document.getElementById('play-solo-btn');
-    if (soloBtn) {
-        soloBtn.disabled = false;
-        soloBtn.textContent = 'Play by Yourself';
-    }
-    const friendsBtn = document.getElementById('play-friends-btn');
-    if (friendsBtn) {
-        friendsBtn.disabled = false;
-        friendsBtn.textContent = 'Play with a Friend';
-    }
     const lobbyBtn = document.getElementById('lobby-start-btn');
     if (lobbyBtn) {
         lobbyBtn.disabled = false;
