@@ -1014,6 +1014,13 @@ img.lobby-card-icon {
     text-align: center;
 }
 
+.friends-card-hint {
+    font-size: clamp(0.5rem, 1.3vw, 0.65rem);
+    color: #888;
+    text-align: center;
+    margin-top: 2px;
+}
+
 /* Avatar pop-in animation when new player joins */
 @keyframes avatarPopIn {
     0% { transform: scale(0); opacity: 0; }
