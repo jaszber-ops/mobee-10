@@ -420,6 +420,7 @@ function disarmNextRoundWatchdog() {
 // --- Lobby Functions ---
 let isMultiplayerMode = false;
 let currentHostId = null;
+let knownPlayerIds = new Set(); // Track players we've seen to animate new ones
 
 function setLobbyMode(mode) {
     const footerLink = document.querySelector('.footer-link');
@@ -628,12 +629,19 @@ function updateLobbyPlayers(scores, avatars) {
     currentHostId = playerIds.sort()[0];
     const isHost = playerId === currentHostId;
 
+    // Find new players for animation
+    const newPlayerIds = playerIds.filter(id => !knownPlayerIds.has(id));
+
     // Build player avatars - same size, border color indicates current player
     lobbyPlayersEl.innerHTML = playerIds.map(id => {
         const isMe = id === playerId;
-        const avatarHtml = getAvatarHTML(avatars[id], 36, { clickable: isMe, isMe });
+        const isNew = newPlayerIds.includes(id) && !isMe; // Don't animate ourselves
+        const avatarHtml = getAvatarHTML(avatars[id], 36, { clickable: isMe, isMe, isNew });
         return avatarHtml;
     }).join('');
+
+    // Update known players
+    playerIds.forEach(id => knownPlayerIds.add(id));
 
     // Show/hide start button based on host status
     if (isHost) {
@@ -1255,7 +1263,7 @@ function handleWrongGuess(data) {
 // Helper function to create avatar sprite HTML
 function getAvatarHTML(avatarCoords, size = 32, options = {}) {
     if (!avatarCoords) return '';
-    const { clickable = false, isMe = false } = typeof options === 'boolean' ? { clickable: options } : options;
+    const { clickable = false, isMe = false, isNew = false } = typeof options === 'boolean' ? { clickable: options } : options;
 
     const [col, row] = avatarCoords.split(',').map(Number);
 
@@ -1283,8 +1291,10 @@ function getAvatarHTML(avatarCoords, size = 32, options = {}) {
     const clickHandler = clickable ? 'onclick="openAvatarModal()"' : '';
     // Use green border for current player, default gray for others
     const borderColor = isMe ? '#BEC887' : '#ccc';
+    // Add animation class for new players
+    const newPlayerClass = isNew ? ' new-player' : '';
 
-    return `<span class="avatar-sprite" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; border-color: ${borderColor}; ${clickStyle}" ${clickHandler}></span>`;
+    return `<span class="avatar-sprite${newPlayerClass}" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; border-color: ${borderColor}; ${clickStyle}" ${clickHandler}></span>`;
 }
 
 function updateScoreboard(scores, avatars = {}) {
