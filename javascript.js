@@ -1137,12 +1137,18 @@ function renderBoard(serverCards, isSpectator = false) {
             const symbolImg = SYMBOLS[symbolName];
             if (!symbolImg) return; // Safety check
 
-            const symContainer = document.createElement('img');
+            // Container handles position/rotation
+            const symContainer = document.createElement('div');
             symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
-            symContainer.src = symbolImg;
-            symContainer.alt = symbolName;
-            symContainer.draggable = false;
             symContainer.dataset.symbolId = symbolName;
+
+            // Inner img handles scale animation
+            const img = document.createElement('img');
+            img.src = symbolImg;
+            img.alt = symbolName;
+            img.draggable = false;
+            img.className = 'symbol-12-img';
+            symContainer.appendChild(img);
 
             // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
             // Only enable clicks if NOT in spectator mode
@@ -1151,15 +1157,15 @@ function renderBoard(serverCards, isSpectator = false) {
                     e.stopPropagation();
                     e.preventDefault();
 
-                    // Visual feedback - use class to preserve rotation
-                    symContainer.classList.add('symbol-clicked');
-                    setTimeout(() => symContainer.classList.remove('symbol-clicked'), 200);
+                    // Visual feedback - scale the inner img
+                    img.classList.add('symbol-clicked');
+                    setTimeout(() => img.classList.remove('symbol-clicked'), 200);
 
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
                     // Vibrate all matching symbols across all cards
-                    document.querySelectorAll(`[data-symbol-id="${symbolName}"]`).forEach(sprite => {
+                    document.querySelectorAll(`[data-symbol-id="${symbolName}"] .symbol-12-img`).forEach(sprite => {
                         sprite.classList.add('symbol-match');
                         setTimeout(() => sprite.classList.remove('symbol-match'), 500);
                     });

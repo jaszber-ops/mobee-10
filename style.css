@@ -1104,21 +1104,28 @@ img.lobby-card-icon {
     position: absolute;
     width: 18%;
     height: auto;
-    transform-origin: center center;
     pointer-events: auto;
     cursor: pointer;
-    transition: scale 0.15s ease-out;
+}
+
+.card-12-symbols .symbol-12-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform 0.15s ease-out;
 }
 
 @media (hover: hover) {
     .card-12-symbols .symbol-12:hover {
-        scale: 1.3;
         z-index: 20;
+    }
+    .card-12-symbols .symbol-12:hover .symbol-12-img {
+        transform: scale(1.3);
     }
 }
 
-.card-12-symbols .symbol-12.symbol-clicked {
-    scale: 1.5;
+.card-12-symbols .symbol-12-img.symbol-clicked {
+    transform: scale(1.5);
 }
 
 /* Symbol positions for 12-symbol card */
