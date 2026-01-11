@@ -691,6 +691,12 @@ img.lobby-card-icon {
     object-fit: contain;
 }
 
+/* Play Solo card icon - smaller and transparent like gameplay sticker */
+.lobby-card:nth-child(1) img.lobby-card-icon {
+    width: 25%;
+    filter: grayscale(100%) opacity(0.2);
+}
+
 .lobby-card-label {
     font-size: clamp(0.7rem, 2vw, 0.95rem);
     font-weight: 700;
