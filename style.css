@@ -1025,8 +1025,8 @@ img.lobby-card-icon {
 }
 
 .friends-invite-btn {
-    background: var(--btn-blue);
-    color: white;
+    background: #F9CE79;
+    color: #333;
     border: none;
     border-radius: 8px;
     padding: 6px 12px;
@@ -1039,7 +1039,7 @@ img.lobby-card-icon {
 }
 
 .friends-invite-btn:hover {
-    background: #357abd;
+    background: #e5b85a;
 }
 
 /* Avatar pop-in animation when new player joins */
