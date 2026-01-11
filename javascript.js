@@ -237,9 +237,18 @@ let conn = null;
 // Check if user clicked logo to go to preview (?preview parameter)
 const isPreviewRequest = urlParams.has('preview');
 
+// Check if user wants to play solo (?solo parameter)
+const isSoloRequest = urlParams.has('solo');
+
 // Check if user clicked logo to go to lobby (?lobby parameter)
 const isLobbyRequest = urlParams.has('lobby');
-if (isLobbyRequest) {
+
+if (isSoloRequest) {
+    // Solo mode: use a unique room based on playerId to ensure solo play
+    history.replaceState(null, null, window.location.pathname);
+    roomCode = `solo_${playerId}`;
+    isMultiplayerMode = false;
+} else if (isLobbyRequest) {
     // Clear the query param and create a new room
     history.replaceState(null, null, window.location.pathname);
     localStorage.removeItem('mobee_last_room');
@@ -336,11 +345,13 @@ function setupConnectionHandlers() {
 conn.addEventListener("open", () => {
     console.log("Connected to room:", roomCode);
 
-    // Update URL to show room code (without reloading)
-    const currentUrl = new URL(window.location);
-    if (currentUrl.searchParams.get('room') !== roomCode) {
-        currentUrl.searchParams.set('room', roomCode);
-        history.replaceState(null, null, currentUrl);
+    // Update URL to show room code (without reloading) - but not for solo mode
+    if (!isSoloRequest) {
+        const currentUrl = new URL(window.location);
+        if (currentUrl.searchParams.get('room') !== roomCode) {
+            currentUrl.searchParams.set('room', roomCode);
+            history.replaceState(null, null, currentUrl);
+        }
     }
 
     // Clear any error messages
@@ -354,8 +365,16 @@ conn.addEventListener("open", () => {
         avatar: selectedAvatar
     });
 
-    // Show lobby instead of modal
-    showLobby();
+    // Solo mode: auto-start the game
+    if (isSoloRequest) {
+        console.log("Solo mode - auto-starting game");
+        setTimeout(() => {
+            safeSend({ type: "START_GAME" });
+        }, 100);
+    } else {
+        // Show lobby instead of modal
+        showLobby();
+    }
 });
 
 // UI Elements
@@ -579,13 +598,8 @@ function resetLobbyButtons() {
 // Global lobby button handlers (called from HTML onclick)
 window.handlePlaySolo = function() {
     console.log("Play Solo clicked");
-    isMultiplayerMode = false;
-    const btn = document.getElementById('play-solo-btn');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Starting...';
-    }
-    safeSend({ type: "START_GAME" });
+    // Navigate to solo mode (no room parameter)
+    window.location.href = '/?solo';
 };
 
 window.handlePlayFriends = function() {
