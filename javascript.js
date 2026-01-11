@@ -233,6 +233,7 @@ const PARTYKIT_HOST = partykitOverride
     || (isLocalHost ? (savedPartyKitHost || "127.0.0.1:1999") : "mobee-multi.jaszber-ops.partykit.dev");
 let roomCode = urlParams.get('room');
 let conn = null;
+let intentionalClose = false; // Flag to prevent auto-reconnect on intentional close
 
 // Check if user clicked logo to go to lobby (?lobby parameter)
 const isLobbyRequest = urlParams.has('lobby');
@@ -289,13 +290,14 @@ function createConnection() {
     // Add close handler for reconnection
     conn.addEventListener("close", (event) => {
         console.log("WebSocket closed:", event.code, event.reason);
-        if (!event.wasClean) {
+        if (!event.wasClean && !intentionalClose) {
             // Unexpected close - attempt reconnection after delay
             setTimeout(() => {
                 console.log("Attempting to reconnect...");
                 createConnection();
             }, 2000);
         }
+        intentionalClose = false; // Reset flag
     });
 
     setupConnectionHandlers();
@@ -600,8 +602,69 @@ window.handleJoinRoomCode = function() {
         alert('Please enter a valid room code');
         return;
     }
-    window.location.href = `${window.location.pathname}?room=${code}`;
+    switchToRoom(code);
 };
+
+function switchToRoom(newRoomCode) {
+    if (newRoomCode === roomCode) return; // Already in this room
+
+    console.log(`Switching from room ${roomCode} to ${newRoomCode}`);
+
+    // Close existing connection cleanly
+    if (conn) {
+        intentionalClose = true; // Prevent auto-reconnect
+        conn.close();
+        conn = null;
+    }
+
+    // Update room code
+    roomCode = newRoomCode;
+    localStorage.setItem('mobee_last_room', roomCode);
+
+    // Update URL without reload
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('room', roomCode);
+    history.pushState(null, null, currentUrl);
+
+    // Reset game state
+    gameStartTime = null;
+    if (gameTimerInterval) {
+        clearInterval(gameTimerInterval);
+        gameTimerInterval = null;
+    }
+    pausedTime = 0;
+    pauseStartTime = null;
+    clearNextRoundWatchdog();
+    awaitingRound = false;
+    knownPlayerIds.clear();
+    currentHostId = null;
+
+    // Clear the board
+    boardEl.innerHTML = '';
+
+    // Hide message overlay
+    msgEl.style.display = 'none';
+
+    // Update lobby inputs with new room code
+    if (lobbyRoomCodeEl) {
+        lobbyRoomCodeEl.value = roomCode;
+    }
+    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
+    if (lobbyRoomLinkEl) {
+        lobbyRoomLinkEl.value = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+    }
+
+    // Reset lobby buttons
+    resetLobbyButtons();
+
+    // Clear players display
+    if (lobbyPlayersEl) {
+        lobbyPlayersEl.innerHTML = '';
+    }
+
+    // Create new connection
+    createConnection();
+}
 
 window.handleRoomCodeCardClick = function() {
     // Focus the input when clicking the card
