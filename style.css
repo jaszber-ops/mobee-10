@@ -1093,9 +1093,9 @@ img.lobby-card-icon {
 
 .card-12-symbols .center-logo {
     position: absolute;
-    bottom: 7.5%;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     width: 8%;
     height: auto;
     filter: grayscale(100%) opacity(0.2);
