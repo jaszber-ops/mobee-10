@@ -567,10 +567,16 @@ window.handleCopyRoomCode = async function() {
 };
 
 window.handleCopyRoomLink = async function() {
-    const codeValue = normalizeRoomCode(lobbyRoomCodeEl ? lobbyRoomCodeEl.value : roomCode);
+    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
+    const codeValue = normalizeRoomCode(document.getElementById('lobby-room-code')?.value || roomCode);
     const url = `${window.location.origin}${window.location.pathname}?room=${codeValue || roomCode}`;
     try {
         await copyToClipboard(url, null);
+        // Visual feedback - flash blue
+        if (lobbyRoomLinkEl) {
+            lobbyRoomLinkEl.style.backgroundColor = '#e0f0ff';
+            setTimeout(() => lobbyRoomLinkEl.style.backgroundColor = '', 300);
+        }
     } catch (e) {
         console.error('Failed to copy room link:', e);
     }
