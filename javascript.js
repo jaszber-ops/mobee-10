@@ -219,6 +219,9 @@ const urlParams = new URLSearchParams(window.location.search);
 const partykitOverride = urlParams.get('pk');
 const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 
+// Track if user joined via a shared room link (had ?room= when page loaded)
+const joinedViaRoomLink = urlParams.has('room') && !urlParams.has('lobby');
+
 if (partykitOverride) {
     localStorage.setItem('mobee_partykit_host', partykitOverride);
 }
@@ -449,14 +452,11 @@ function showLobby() {
     resetLobbyButtons();
 
     // Check if we joined via a room link (someone else's room)
-    const urlParams = new URLSearchParams(window.location.search);
-    const joinedViaLink = urlParams.has('room');
-
-    if (joinedViaLink) {
+    if (joinedViaRoomLink) {
         // Joined someone's room - go straight to multiplayer view
         enterMultiplayerLobby();
     } else {
-        // Fresh start - show actions, hide friends section
+        // Fresh start - show lobby cards
         setLobbyMode('solo');
     }
 }
