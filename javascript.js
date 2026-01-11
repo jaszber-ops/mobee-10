@@ -1291,12 +1291,10 @@ function getAvatarHTML(avatarCoords, size = 32, options = {}) {
 
     const clickStyle = clickable ? 'cursor: pointer;' : '';
     const clickHandler = clickable ? 'onclick="openAvatarModal()"' : '';
-    // Use mobee-red border for current player, default gray for others
-    const borderColor = isMe ? '#E6A07F' : '#ccc';
     // Add animation class for new players
     const newPlayerClass = isNew ? ' new-player' : '';
 
-    return `<span class="avatar-sprite${newPlayerClass}" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; border-color: ${borderColor}; ${clickStyle}" ${clickHandler}></span>`;
+    return `<span class="avatar-sprite${newPlayerClass}" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; ${clickStyle}" ${clickHandler}></span>`;
 }
 
 function updateScoreboard(scores, avatars = {}) {

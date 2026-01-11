@@ -538,9 +538,7 @@ a.stay-btn {
     background-repeat: no-repeat;
     display: inline-block;
     transition: transform 0.2s ease;
-    border-width: 2px;
-    border-style: solid;
-    /* border-color set via inline style: green for current player, gray for others */
+    border: 1px solid #BEC887;
     border-radius: 50%;
 }
 
