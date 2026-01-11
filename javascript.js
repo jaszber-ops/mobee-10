@@ -1521,9 +1521,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lobbyCodeInput.addEventListener('focus', () => {
             setTimeout(() => lobbyCodeInput.select(), 0);
         });
-        lobbyCodeInput.addEventListener('click', () => {
-            window.handleCopyRoomCode();
-        });
+        // Don't copy on click - only copy via the copy icon
+        // This allows users to paste a new room code without losing their clipboard
         lobbyCodeInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
