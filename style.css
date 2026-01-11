@@ -1139,7 +1139,7 @@ img.lobby-card-icon {
 }
 .card-12-symbols .symbol-12.pos-90-outer {
     top: 50%;
-    left: 90%;
+    left: 85%;
     transform: translate(-50%, -50%) rotate(-90deg);
 }
 .card-12-symbols .symbol-12.pos-180-outer {
@@ -1149,7 +1149,7 @@ img.lobby-card-icon {
 }
 .card-12-symbols .symbol-12.pos-270-outer {
     top: 50%;
-    left: 10%;
+    left: 15%;
     transform: translate(-50%, -50%) rotate(90deg);
 }
 
