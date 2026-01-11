@@ -1529,6 +1529,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.handleJoinRoomCode();
             }
         });
+        // Auto-submit when 6 characters are entered (paste or typing)
+        lobbyCodeInput.addEventListener('input', () => {
+            const code = lobbyCodeInput.value.trim().toUpperCase();
+            if (code.length === 6 && /^[A-Z0-9]{6}$/.test(code)) {
+                // Only auto-submit if the code is different from current room
+                if (code !== roomCode) {
+                    window.handleJoinRoomCode();
+                }
+            }
+        });
     }
 
     const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
