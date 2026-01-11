@@ -419,6 +419,12 @@ a.stay-btn {
     transform: translateY(-2px);
 }
 
+.footer-tagline {
+    font-size: 1rem;
+    color: #666;
+    margin: 0 0 4px 0;
+}
+
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -654,13 +660,6 @@ a.stay-btn {
     flex-direction: column;
     align-items: center;
     padding: 16px;
-}
-
-.lobby-tagline {
-    font-size: 1.1rem;
-    color: #666;
-    margin: 0 0 12px 0;
-    text-align: center;
 }
 
 /* Lobby hex cards - arranged like gameplay */
