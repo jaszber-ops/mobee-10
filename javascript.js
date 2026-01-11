@@ -1289,8 +1289,8 @@ function getAvatarHTML(avatarCoords, size = 32, options = {}) {
 
     const clickStyle = clickable ? 'cursor: pointer;' : '';
     const clickHandler = clickable ? 'onclick="openAvatarModal()"' : '';
-    // Use green border for current player, default gray for others
-    const borderColor = isMe ? '#BEC887' : '#ccc';
+    // Use mobee-red border for current player, default gray for others
+    const borderColor = isMe ? '#E6A07F' : '#ccc';
     // Add animation class for new players
     const newPlayerClass = isNew ? ' new-player' : '';
 
