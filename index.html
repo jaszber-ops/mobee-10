@@ -82,33 +82,44 @@
 
     <!-- Friends section (shown after clicking Play with Friends) -->
     <div id="friends-section" style="display:none;">
-        <div class="lobby-row">
-            <div class="lobby-label">Room Code</div>
-            <div class="lobby-code-row">
-                <div class="lobby-code-stack">
-                    <div class="lobby-code-input-wrap">
-                        <input type="text" id="lobby-room-code" class="lobby-code-input" maxlength="6"
-                               style="text-transform: uppercase;" enterkeyhint="go" inputmode="text" autocapitalize="characters">
-                        <span class="lobby-code-icon" aria-hidden="true"></span>
-                    </div>
+        <div id="friends-cards" class="lobby-cards">
+            <!-- Card 1: Room Code -->
+            <div class="card friends-card" onclick="handleRoomCodeCardClick()">
+                <svg class="card-bg" viewBox="0 0 260 300">
+                    <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
+                </svg>
+                <div class="friends-card-content">
+                    <div class="friends-card-label">Room Code</div>
+                    <input type="text" id="lobby-room-code" class="friends-code-input" maxlength="6"
+                           style="text-transform: uppercase;" enterkeyhint="go" inputmode="text" autocapitalize="characters"
+                           onclick="event.stopPropagation()">
+                </div>
+            </div>
+
+            <!-- Card 2: Room Link + Send Invite -->
+            <div class="card friends-card" onclick="handleShareInvite()">
+                <svg class="card-bg" viewBox="0 0 260 300">
+                    <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
+                </svg>
+                <div class="friends-card-content">
+                    <div class="friends-card-label">Send Invite</div>
+                    <input type="text" id="lobby-room-link" class="friends-link-input" readonly
+                           onclick="event.stopPropagation(); handleCopyRoomLink()">
+                </div>
+            </div>
+
+            <!-- Card 3: Start Game -->
+            <div class="card friends-card" id="start-game-card" onclick="handleLobbyStart()">
+                <svg class="card-bg" viewBox="0 0 260 300">
+                    <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
+                </svg>
+                <div class="friends-card-content">
+                    <div id="lobby-players" class="friends-players"></div>
+                    <button id="lobby-start-btn" class="friends-start-btn" onclick="event.stopPropagation(); handleLobbyStart()">Start Game</button>
+                    <div id="lobby-waiting" class="friends-waiting" style="display:none;">Waiting for host…</div>
                 </div>
             </div>
         </div>
-
-        <div class="lobby-row">
-            <div class="lobby-label">Room Link</div>
-            <div class="lobby-code-row">
-                <div class="lobby-code-input-wrap">
-                    <input type="text" id="lobby-room-link" class="lobby-link-input" readonly>
-                    <span class="lobby-link-icon" aria-hidden="true" onclick="handleCopyRoomLink()"></span>
-                </div>
-            </div>
-        </div>
-
-        <button id="share-invite-btn" class="btn btn-secondary" onclick="handleShareInvite()">Send Invite</button>
-
-        <button id="lobby-start-btn" class="btn btn-primary" onclick="handleLobbyStart()">Start Game</button>
-        <div id="lobby-waiting" class="lobby-hint" style="display:none;">Waiting for host to start…</div>
     </div>
 </div>
 

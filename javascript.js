@@ -594,6 +594,15 @@ window.handleJoinRoomCode = function() {
     window.location.href = `${window.location.pathname}?room=${code}`;
 };
 
+window.handleRoomCodeCardClick = function() {
+    // Focus the input when clicking the card
+    const input = document.getElementById('lobby-room-code');
+    if (input) {
+        input.focus();
+        input.select();
+    }
+};
+
 window.handleLobbyStart = function() {
     console.log("Start Game clicked");
     const btn = document.getElementById('lobby-start-btn');
