@@ -704,6 +704,11 @@ img.lobby-card-icon {
 .lobby-card:nth-child(2) .card-shape { stroke: #F9CE79; } /* Get the Cards - yellow */
 .lobby-card:nth-child(3) .card-shape { stroke: #BEC887; } /* Play with Friends - green */
 
+/* Friends section card border colors: same as lobby */
+.friends-card:nth-child(1) .card-shape { stroke: #E6A07F; } /* Room Code - red */
+.friends-card:nth-child(2) .card-shape { stroke: #F9CE79; } /* Room Link - yellow */
+.friends-card:nth-child(3) .card-shape { stroke: #BEC887; } /* Start Game - green */
+
 .lobby-card-label {
     font-size: clamp(0.7rem, 2vw, 0.95rem);
     font-weight: 700;
