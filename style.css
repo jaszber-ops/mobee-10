@@ -674,38 +674,40 @@ a.stay-btn {
 /* Override absolute positioning from .card for lobby cards */
 .lobby-card.card {
     position: absolute;
-    width: 45%;
+    width: 48%;
     height: auto;
     aspect-ratio: 260 / 300;
-    transform: none;
-}
-
-.lobby-card:hover {
-    transform: scale(1.05);
-}
-
-.lobby-card:active {
-    transform: scale(0.98);
 }
 
 /* Position cards like the game board - triangular arrangement */
+/* Card 1: top center (Play Solo) */
 .lobby-card:nth-child(1) {
     top: 0;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, 0);
 }
 .lobby-card:nth-child(1):hover {
-    transform: translateX(-50%) scale(1.05);
+    transform: translate(-50%, 0) scale(1.05);
 }
 
+/* Card 2: bottom right (Get the Cards) */
 .lobby-card:nth-child(2) {
-    bottom: 5%;
-    left: 5%;
+    bottom: 0;
+    right: 2%;
+    transform: none;
+}
+.lobby-card:nth-child(2):hover {
+    transform: scale(1.05);
 }
 
+/* Card 3: bottom left (Play with Friends) */
 .lobby-card:nth-child(3) {
-    bottom: 5%;
-    right: 5%;
+    bottom: 0;
+    left: 2%;
+    transform: none;
+}
+.lobby-card:nth-child(3):hover {
+    transform: scale(1.05);
 }
 
 .lobby-card-content {
