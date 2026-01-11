@@ -1533,23 +1533,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
     if (lobbyRoomLinkEl) {
-        const copyLink = async () => {
-            lobbyRoomLinkEl.select();
-            lobbyRoomLinkEl.setSelectionRange(0, lobbyRoomLinkEl.value.length);
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(lobbyRoomLinkEl.value);
-                } else {
-                    document.execCommand('copy');
-                }
-                // Visual feedback - flash blue like room code
-                lobbyRoomLinkEl.style.backgroundColor = '#e0f0ff';
-                setTimeout(() => lobbyRoomLinkEl.style.backgroundColor = '', 300);
-            } catch (e) {
-                console.error('Failed to copy room link:', e);
-            }
-        };
-        lobbyRoomLinkEl.addEventListener('click', copyLink);
+        // Use the same handler as the copy icon
+        lobbyRoomLinkEl.addEventListener('click', () => {
+            window.handleCopyRoomLink();
+        });
         lobbyRoomLinkEl.addEventListener('focus', () => {
             setTimeout(() => lobbyRoomLinkEl.select(), 0);
         });
