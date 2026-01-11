@@ -1,6 +1,10 @@
 // party/server.js
 import { generateDeck } from "./game-math.js";
 
+// Level thresholds
+const LEVEL_UP_THRESHOLD = 6;    // Score to reach level 2
+const LEVEL_DOWN_THRESHOLD = 0;  // Score to drop back to level 1 (when on level 2)
+
 // Fisher-Yates shuffle for unbiased random selection
 function fisherYatesShuffle(array) {
   const shuffled = [...array];
@@ -17,18 +21,27 @@ export default class MobeeServer {
     this._queue = Promise.resolve();
   }
 
+  // Helper to get deck positions based on level
+  getDeckPositions(level) {
+    if (level === 2) {
+      // Level 2 has 10 cards, use positions that cycle through unique 3-card combos
+      return [0, 3, 6, 9, 2, 5, 8, 1, 4, 7];
+    }
+    // Level 1 has 8 cards
+    return [0, 3, 6, 1, 4, 7, 2, 5];
+  }
+
   // Helper method to generate and broadcast a new round
-  // Deck cycles through positions: 0,3,6,1,4,7,2,5 then reshuffles
   async startNewRound(state) {
     const shuffleArray = (arr) => fisherYatesShuffle(arr);
-
-    // The 8 starting positions that cycle through all unique 3-card combinations
-    const DECK_POSITIONS = [0, 3, 6, 1, 4, 7, 2, 5];
+    const level = state.currentLevel || 1;
+    const DECK_POSITIONS = this.getDeckPositions(level);
+    const deckSize = state.deck.length;
 
     // Initialize or advance deck position
     if (state.deckPositionIndex === undefined || state.deckPositionIndex === null) {
       // First round - shuffle deck order and start at position 0
-      state.shuffledDeckOrder = fisherYatesShuffle([0, 1, 2, 3, 4, 5, 6, 7]);
+      state.shuffledDeckOrder = fisherYatesShuffle([...Array(deckSize).keys()]);
       state.deckPositionIndex = 0;
       console.log("New game - shuffled deck order:", state.shuffledDeckOrder);
     } else {
@@ -37,7 +50,7 @@ export default class MobeeServer {
 
       // If we've cycled back to 0, reshuffle the deck
       if (state.deckPositionIndex === 0) {
-        state.shuffledDeckOrder = fisherYatesShuffle([0, 1, 2, 3, 4, 5, 6, 7]);
+        state.shuffledDeckOrder = fisherYatesShuffle([...Array(deckSize).keys()]);
         console.log("Deck exhausted - reshuffled deck order:", state.shuffledDeckOrder);
       }
     }
@@ -47,11 +60,11 @@ export default class MobeeServer {
 
     // Get 3 consecutive cards from shuffled deck (wrapping around)
     const deckOrder = state.shuffledDeckOrder;
-    const idx1 = deckOrder[startPos % 8];
-    const idx2 = deckOrder[(startPos + 1) % 8];
-    const idx3 = deckOrder[(startPos + 2) % 8];
+    const idx1 = deckOrder[startPos % deckSize];
+    const idx2 = deckOrder[(startPos + 1) % deckSize];
+    const idx3 = deckOrder[(startPos + 2) % deckSize];
 
-    console.log("Position index:", state.deckPositionIndex, "| Start pos:", startPos, "| Card indices:", idx1, idx2, idx3);
+    console.log("Level:", level, "| Position index:", state.deckPositionIndex, "| Card indices:", idx1, idx2, idx3);
 
     // Shuffle symbols within each card
     const c1 = shuffleArray(state.deck[idx1]);
@@ -72,12 +85,31 @@ export default class MobeeServer {
     this.party.broadcast(JSON.stringify({
       type: "NEW_ROUND",
       cards: [c1, c2, c3],
+      level: level,
       gameStartTime: state.gameStartTime,
       scores: state.scores,
+      playerLevels: state.playerLevels,
       avatars: state.avatars
     }));
 
     await this.party.storage.put("gamestate", state);
+  }
+
+  // Helper to switch to a new level
+  async switchLevel(state, newLevel) {
+    console.log("Switching to level", newLevel);
+    state.currentLevel = newLevel;
+
+    // Generate new deck for the level
+    const deckData = generateDeck(newLevel);
+    state.deck = deckData.cards;
+    state.symbolSet = deckData.symbolSet;
+
+    // Reset deck position for fresh shuffle
+    state.deckPositionIndex = null;
+    state.shuffledDeckOrder = null;
+
+    return state;
   }
 
   async onConnect(conn) {
@@ -99,12 +131,14 @@ export default class MobeeServer {
     let state = await this.party.storage.get("gamestate");
 
     if (!state) {
-      const deckData = generateDeck();
+      const deckData = generateDeck(1); // Start with level 1
       state = {
         deck: deckData.cards,
         symbolSet: deckData.symbolSet,
+        currentLevel: 1,
         status: "waiting",
         scores: {},
+        playerLevels: {},
         avatars: {},
         currentAnswer: null,
         gameStartTime: null,
@@ -113,12 +147,12 @@ export default class MobeeServer {
       await this.party.storage.put("gamestate", state);
     }
 
-    // Initialize avatars object if it doesn't exist (for backwards compatibility)
-    if (!state.avatars) {
-      state.avatars = {};
-    }
+    // Initialize avatars and playerLevels objects if they don't exist
+    if (!state.avatars) state.avatars = {};
+    if (!state.playerLevels) state.playerLevels = {};
+    if (!state.currentLevel) state.currentLevel = 1;
 
-    // Clean up zombie players (players in state but no active connection)
+    // Clean up zombie players
     const activePlayerIds = [...this.party.getConnections()].map(c => c.playerId).filter(Boolean);
     const statePlayerIds = Object.keys(state.scores);
     const zombiePlayers = statePlayerIds.filter(id => !activePlayerIds.includes(id) && id !== playerId);
@@ -128,6 +162,7 @@ export default class MobeeServer {
       zombiePlayers.forEach(zombieId => {
         delete state.scores[zombieId];
         delete state.avatars[zombieId];
+        delete state.playerLevels[zombieId];
       });
       await this.party.storage.put("gamestate", state);
     }
@@ -146,9 +181,7 @@ export default class MobeeServer {
       return;
     }
 
-    // Reset gameStartTime in these cases:
-    // 1. If in lobby (waiting status)
-    // 2. If game time has expired (60+ seconds elapsed)
+    // Reset gameStartTime in these cases
     if (state.gameStartTime) {
       const elapsed = Math.floor((Date.now() - state.gameStartTime) / 1000);
 
@@ -160,31 +193,32 @@ export default class MobeeServer {
       }
     }
 
-    // Reset stale countdowns (e.g., server restart during countdown)
+    // Reset stale countdowns
     if (state.status === "countdown") {
       const countdownAge = state.countdownStartAt ? Date.now() - state.countdownStartAt : null;
       const isCountdownStale = countdownAge === null || countdownAge > 5000;
       const playerCount = Object.keys(state.scores).length;
 
       if (isCountdownStale || playerCount <= 1) {
-        console.log("Resetting stale countdown (age:", countdownAge, "ms, players:", playerCount, ")");
+        console.log("Resetting stale countdown");
         state.status = "waiting";
         state.countdownStartAt = null;
         await this.party.storage.put("gamestate", state);
       }
     }
 
-    // Check if player was already in the game (returning player vs new player)
+    // Check if player was already in the game
     const isReturningPlayer = state.scores[playerId] !== undefined;
 
     // Add player to scores if new
     if (!isReturningPlayer) {
       state.scores[playerId] = 0;
+      state.playerLevels[playerId] = 1; // New players start at level 1
 
-      // Notify all players about the new player joining
       this.party.broadcast(JSON.stringify({
         type: "UPDATE_SCORES",
         scores: state.scores,
+        playerLevels: state.playerLevels,
         avatars: state.avatars
       }));
 
@@ -201,32 +235,30 @@ export default class MobeeServer {
     const playerCount = Object.keys(state.scores).length;
 
     if (state.status === "countdown") {
-      // Game is in countdown - show countdown to joining player too
       console.log("Player joining during countdown");
       conn.send(JSON.stringify({
         type: "GAME_STARTING",
-        countdown: 3, // They'll see remaining countdown
+        countdown: 3,
         scores: state.scores,
+        playerLevels: state.playerLevels,
         avatars: state.avatars
       }));
     } else if (state.status === "playing" && state.currentShuffledCards && !isReturningPlayer && playerCount > 1) {
-      // New player joining mid-game with other players - send them as spectator
-      console.log("New player joining mid-game with", playerCount, "total players - spectating");
+      console.log("New player joining mid-game - spectating");
       conn.send(JSON.stringify({
         type: "JOIN_AS_SPECTATOR",
         cards: state.currentShuffledCards,
+        level: state.currentLevel,
         gameStartTime: state.gameStartTime,
         scores: state.scores,
+        playerLevels: state.playerLevels,
         avatars: state.avatars
       }));
     } else {
-      // Game is in lobby OR returning player OR solo player - show lobby
-      if (state.status === "playing" && !isReturningPlayer && playerCount === 1) {
-        console.log("Solo player in active game - going to lobby instead of spectating");
-      }
       conn.send(JSON.stringify({
         type: "UPDATE_SCORES",
         scores: state.scores,
+        playerLevels: state.playerLevels,
         avatars: state.avatars
       }));
     }
@@ -250,13 +282,11 @@ export default class MobeeServer {
     if (data.type === "START_GAME") {
       console.log("Starting new game...");
 
-      // If we're starting from lobby (status is waiting), always start a fresh 60-second game
       const isNewGame = !state.gameStartTime || state.status === "waiting";
       const playerCount = Object.keys(state.scores).length;
       const isMultiplayer = playerCount > 1;
 
       if (isNewGame) {
-        // Mark that countdown is in progress to prevent multiple starts (multiplayer only)
         if (state.status === "countdown") {
           const countdownAge = state.countdownStartAt ? Date.now() - state.countdownStartAt : null;
           const isCountdownStale = countdownAge === null || countdownAge > 5000;
@@ -264,16 +294,13 @@ export default class MobeeServer {
             console.log("Countdown already in progress, ignoring START_GAME");
             return;
           }
-          console.log("Stale countdown detected, restarting");
           state.status = "waiting";
           state.countdownStartAt = null;
         }
 
-        // Helper function to start the actual game
         const startActualGame = async () => {
           let currentState = await this.party.storage.get("gamestate");
 
-          // Only proceed if still in countdown/waiting (game wasn't reset)
           if (isMultiplayer && currentState.status !== "countdown") {
             console.log("Countdown interrupted, not starting game");
             return;
@@ -282,22 +309,27 @@ export default class MobeeServer {
           currentState.gameStartTime = Date.now();
           currentState.gameEndsAt = Date.now() + 60000;
           currentState.countdownStartAt = null;
-          console.log("Game timer started fresh at 60 seconds! Ends at:", currentState.gameEndsAt);
 
           // Reset all scores to 0 at game start
           currentState.scores = Object.fromEntries(
             Object.keys(currentState.scores).map(id => [id, 0])
           );
 
-          // Reset deck position to start fresh with a new shuffle
+          // Reset all players to level 1 at game start
+          currentState.playerLevels = Object.fromEntries(
+            Object.keys(currentState.playerLevels).map(id => [id, 1])
+          );
+          currentState.currentLevel = 1;
+
+          // Reset deck position
           currentState.deckPositionIndex = null;
           currentState.shuffledDeckOrder = null;
 
-          // Generate a new deck with fresh random 14 symbols from the pool of 30
-          const deckData = generateDeck();
+          // Generate level 1 deck
+          const deckData = generateDeck(1);
           currentState.deck = deckData.cards;
           currentState.symbolSet = deckData.symbolSet;
-          console.log("New game - selected symbols:", currentState.symbolSet);
+          console.log("New game - Level 1, symbols:", currentState.symbolSet);
 
           await this.startNewRound(currentState);
 
@@ -305,7 +337,6 @@ export default class MobeeServer {
           const gameStartTime = currentState.gameStartTime;
           setTimeout(async () => {
             const endState = await this.party.storage.get("gamestate");
-            // Only end if this is still the same game
             if (endState.gameStartTime === gameStartTime) {
               console.log("Server forcing END_GAME (60s timeout)");
               endState.gameStartTime = null;
@@ -316,6 +347,7 @@ export default class MobeeServer {
               this.party.broadcast(JSON.stringify({
                 type: "GAME_OVER",
                 scores: endState.scores,
+                playerLevels: endState.playerLevels,
                 avatars: endState.avatars
               }));
             }
@@ -323,34 +355,29 @@ export default class MobeeServer {
         };
 
         if (isMultiplayer) {
-          // Multiplayer: show 3-2-1 countdown
           state.status = "countdown";
           state.countdownStartAt = Date.now();
           await this.party.storage.put("gamestate", state);
 
-          // Broadcast countdown start to all players
           this.party.broadcast(JSON.stringify({
             type: "GAME_STARTING",
             countdown: 3,
             scores: state.scores,
+            playerLevels: state.playerLevels,
             avatars: state.avatars
           }));
 
-          // After 3 seconds, actually start the game
           setTimeout(startActualGame, 3000);
         } else {
-          // Single player: start immediately, no countdown
           console.log("Single player mode - starting immediately");
           await startActualGame();
         }
       } else {
-        // Mid-game start (shouldn't normally happen)
         await this.startNewRound(state);
       }
     }
 
     if (data.type === "END_GAME") {
-      // Timer reached 0 - reset gameStartTime so next game starts fresh
       console.log("Game ended - resetting timer");
       state.gameStartTime = null;
       state.status = "waiting";
@@ -358,16 +385,20 @@ export default class MobeeServer {
     }
 
     if (data.type === "RESET_GAME") {
-      // Reset scores and timer for new game
       state.scores = Object.fromEntries(
         Object.keys(state.scores).map(id => [id, 0])
       );
+      state.playerLevels = Object.fromEntries(
+        Object.keys(state.playerLevels).map(id => [id, 1])
+      );
+      state.currentLevel = 1;
       state.gameStartTime = null;
       state.status = "waiting";
 
       this.party.broadcast(JSON.stringify({
         type: "GAME_RESET",
         scores: state.scores,
+        playerLevels: state.playerLevels,
         avatars: state.avatars
       }));
 
@@ -383,7 +414,7 @@ export default class MobeeServer {
         return;
       }
 
-      // Rate limit: ignore if last guess < 150ms ago
+      // Rate limit
       const now = Date.now();
       if (now - sender.lastGuessTime < 150) {
         console.log("Rate limited guess from", sender.playerId);
@@ -393,7 +424,7 @@ export default class MobeeServer {
 
       // Check if game time has expired
       if (state.gameEndsAt && Date.now() > state.gameEndsAt) {
-        console.log("GUESS received but game time expired, forcing END_GAME");
+        console.log("GUESS received but game time expired");
         state.gameStartTime = null;
         state.gameEndsAt = null;
         state.status = "waiting";
@@ -402,65 +433,101 @@ export default class MobeeServer {
         this.party.broadcast(JSON.stringify({
           type: "GAME_OVER",
           scores: state.scores,
+          playerLevels: state.playerLevels,
           avatars: state.avatars
         }));
         return;
       }
 
       const guesser = sender.playerId;
+      const playerCount = Object.keys(state.scores).length;
+      const isSinglePlayer = playerCount === 1;
 
-      console.log("Player", guesser, "guessed symbol:", data.symbol, "| Correct answer:", state.currentAnswer);
+      console.log("Player", guesser, "guessed:", data.symbol, "| Answer:", state.currentAnswer);
 
       if (data.symbol === state.currentAnswer) {
-        // Correct answer - winner!
-        console.log("✓ CORRECT! Winner:", guesser, "clicked card:", data.cardIndex);
+        // Correct answer
+        console.log("✓ CORRECT! Winner:", guesser);
         state.status = "waiting";
-        state.scores[guesser] = (state.scores[guesser] || 0) + 1;
+        const oldScore = state.scores[guesser] || 0;
+        const newScore = oldScore + 1;
+        state.scores[guesser] = newScore;
+
+        let levelChanged = false;
+        let newLevel = state.playerLevels[guesser] || 1;
+
+        // Check for level up (only in single player for now)
+        if (isSinglePlayer && newScore >= LEVEL_UP_THRESHOLD && newLevel === 1) {
+          newLevel = 2;
+          state.playerLevels[guesser] = 2;
+          levelChanged = true;
+          console.log("🎉 Player", guesser, "leveled up to Level 2!");
+
+          // Switch to level 2 deck
+          state = await this.switchLevel(state, 2);
+        }
 
         this.party.broadcast(JSON.stringify({
           type: "WINNER",
           winnerId: guesser,
           winningSymbol: state.currentAnswer,
           scores: state.scores,
-          avatars: state.avatars
+          playerLevels: state.playerLevels,
+          avatars: state.avatars,
+          levelChanged: levelChanged,
+          newLevel: levelChanged ? newLevel : undefined
         }));
 
         await this.party.storage.put("gamestate", state);
 
-        // Check if single player mode
-        const playerCount = Object.keys(state.scores).length;
-        const delay = playerCount === 1 ? 300 : 4000; // 300ms for single player, 4s for multiplayer
+        const delay = isSinglePlayer ? 300 : 4000;
 
-        // Auto-start next round with new 3-card hand
         setTimeout(async () => {
           const currentState = await this.party.storage.get("gamestate");
           await this.startNewRound(currentState);
         }, delay);
       } else {
-        // Wrong answer - lose 1 point if positive
-        console.log("Wrong guess from:", guesser);
+        // Wrong answer
+        console.log("✗ Wrong guess from:", guesser);
         state.status = "waiting";
 
-        // Decrease guesser's score by 1 if positive
-        if (state.scores[guesser] > 0) {
-          state.scores[guesser] = state.scores[guesser] - 1;
+        const oldScore = state.scores[guesser] || 0;
+        const currentLevel = state.playerLevels[guesser] || 1;
+        let newScore = oldScore;
+        let levelChanged = false;
+        let newLevel = currentLevel;
+
+        // Decrease score if positive
+        if (oldScore > 0) {
+          newScore = oldScore - 1;
+          state.scores[guesser] = newScore;
         }
 
-        // Broadcast that the guesser lost
+        // Check for level down (only in single player, only if on level 2)
+        if (isSinglePlayer && currentLevel === 2 && newScore <= LEVEL_DOWN_THRESHOLD) {
+          newLevel = 1;
+          state.playerLevels[guesser] = 1;
+          levelChanged = true;
+          console.log("📉 Player", guesser, "dropped to Level 1");
+
+          // Switch back to level 1 deck
+          state = await this.switchLevel(state, 1);
+        }
+
         this.party.broadcast(JSON.stringify({
           type: "WRONG_GUESS",
           guesserId: guesser,
           scores: state.scores,
-          avatars: state.avatars
+          playerLevels: state.playerLevels,
+          avatars: state.avatars,
+          levelChanged: levelChanged,
+          newLevel: levelChanged ? newLevel : undefined
         }));
 
         await this.party.storage.put("gamestate", state);
 
-        // Check if single player mode
-        const playerCount = Object.keys(state.scores).length;
-        const delay = playerCount === 1 ? 300 : 4000; // 300ms for single player, 4s for multiplayer
+        const delay = isSinglePlayer ? 300 : 4000;
 
-        // Auto-start next round with new 3-card hand
         setTimeout(async () => {
           const currentState = await this.party.storage.get("gamestate");
           await this.startNewRound(currentState);
@@ -472,6 +539,7 @@ export default class MobeeServer {
       sender.send(JSON.stringify({
         type: "UPDATE_SCORES",
         scores: state.scores,
+        playerLevels: state.playerLevels,
         avatars: state.avatars
       }));
     }
@@ -480,10 +548,10 @@ export default class MobeeServer {
       const playerId = sender.playerId;
       state.avatars[playerId] = data.avatar;
 
-      // Broadcast updated avatars to all players
       this.party.broadcast(JSON.stringify({
         type: "UPDATE_SCORES",
         scores: state.scores,
+        playerLevels: state.playerLevels,
         avatars: state.avatars
       }));
 
@@ -492,7 +560,6 @@ export default class MobeeServer {
   }
 
   async onClose(conn) {
-    // Get playerId from the connection
     const playerId = conn.playerId;
 
     if (!playerId) {
@@ -502,31 +569,40 @@ export default class MobeeServer {
 
     console.log("Player disconnected:", playerId);
 
-    let state = await this.party.storage.get("gamestate");
-
+    const state = await this.party.storage.get("gamestate");
     if (!state) return;
 
-    // Remove player from scores and avatars
-    if (state.scores && state.scores[playerId] !== undefined) {
-      delete state.scores[playerId];
-      console.log("Removed player from scores:", playerId);
+    // Check for other connections from same player
+    const otherConns = [...this.party.getConnections()].filter(
+      c => c.playerId === playerId && c.id !== conn.id
+    );
+
+    if (otherConns.length > 0) {
+      console.log("Player", playerId, "still has", otherConns.length, "other connection(s)");
+      return;
     }
 
-    if (state.avatars && state.avatars[playerId]) {
-      delete state.avatars[playerId];
-      console.log("Removed player avatar:", playerId);
+    // Remove player from game
+    delete state.scores[playerId];
+    delete state.avatars[playerId];
+    delete state.playerLevels[playerId];
+
+    const remainingPlayers = Object.keys(state.scores).length;
+    console.log("Removed player. Remaining:", remainingPlayers);
+
+    // If all players left and countdown was active, cancel it
+    if (remainingPlayers === 0 && state.status === "countdown") {
+      state.status = "waiting";
+      state.countdownStartAt = null;
     }
 
-    // Save updated state
-    await this.party.storage.put("gamestate", state);
-
-    // Notify remaining players about updated scores/avatars
     this.party.broadcast(JSON.stringify({
       type: "UPDATE_SCORES",
       scores: state.scores,
+      playerLevels: state.playerLevels,
       avatars: state.avatars
     }));
 
-    console.log("Remaining players:", Object.keys(state.scores).length);
+    await this.party.storage.put("gamestate", state);
   }
 }
