@@ -1153,24 +1153,24 @@ img.lobby-card-icon {
     transform: translate(-50%, -50%) rotate(90deg);
 }
 
-/* Diagonal positions - closer to center */
+/* Diagonal positions */
 .card-12-symbols .symbol-12.pos-45 {
-    top: 28%;
-    left: 68%;
+    top: 25%;
+    left: 71.5%;
     transform: translate(-50%, -50%) rotate(-135deg);
 }
 .card-12-symbols .symbol-12.pos-135 {
-    top: 72%;
-    left: 68%;
+    top: 75%;
+    left: 71.5%;
     transform: translate(-50%, -50%) rotate(-45deg);
 }
 .card-12-symbols .symbol-12.pos-225 {
-    top: 72%;
-    left: 32%;
+    top: 75%;
+    left: 28.5%;
     transform: translate(-50%, -50%) rotate(45deg);
 }
 .card-12-symbols .symbol-12.pos-315 {
-    top: 28%;
-    left: 32%;
+    top: 25%;
+    left: 28.5%;
     transform: translate(-50%, -50%) rotate(135deg);
 }
