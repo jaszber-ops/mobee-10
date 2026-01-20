@@ -1,44 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- =================================================================
+         Møbee Multi - Real-time Multiplayer Card Matching Game
+         ================================================================= -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <!-- PWA / Mobile App Configuration -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Møbee Multi - The Battle</title>
-    <!-- Optimized with sprite sheets -->
 
-    <!-- Favicon -->
+    <title>Møbee Multi - The Battle</title>
+
+    <!-- Favicon & App Icons -->
     <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
     <link rel="shortcut icon" href="assets/icons/icon-512x512.png" type="image/x-icon">
 
+    <!-- Preload Critical Resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" href="assets/mobee_sprite.svg" as="image" type="image/svg+xml">
+
+    <!-- Fonts & Styles -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
     <!-- Sentry Error Tracking -->
     <script
-      src="https://js-de.sentry-cdn.com/9ed59983028a134d7d78bce7324ce25f.min.js"
-      crossorigin="anonymous"
-      onload="
-        if (typeof Sentry !== 'undefined' && Sentry.setUser) {
-          const playerId = localStorage.getItem('mobee_player_id');
-          if (playerId) {
-            Sentry.setUser({ id: playerId });
-          }
-        }
-      "
+        src="https://js-de.sentry-cdn.com/9ed59983028a134d7d78bce7324ce25f.min.js"
+        crossorigin="anonymous"
+        onload="
+            if (typeof Sentry !== 'undefined' && Sentry.setUser) {
+                const playerId = localStorage.getItem('mobee_player_id');
+                if (playerId) Sentry.setUser({ id: playerId });
+            }
+        "
     ></script>
 </head>
 <body>
 
+<!-- =================================================================
+     HEADER - Logo and Score Display
+     ================================================================= -->
 <header>
     <div class="logo-container">
         <a href="/?lobby">
-            <img src="assets/mobee_logo.png" class="logo-img">
+            <img src="assets/mobee_logo.png" class="logo-img" alt="Møbee Logo">
         </a>
     </div>
     <div class="stats">
@@ -46,84 +55,102 @@
     </div>
 </header>
 
-<div id="lobby" class="lobby" style="display:none;">
-    <!-- Main lobby with 3 hex cards -->
+<!-- Mobile-only hint (shown below header on phones) -->
+<div id="lobby-top-hint" class="lobby-top-hint mobile-only">
+    Flip 3 cards and find the unique shared symbol!
+</div>
+
+<!-- =================================================================
+     LOBBY - Main Menu with Three Hex Cards
+     ================================================================= -->
+<div id="lobby" class="lobby">
+
+    <!-- Main Lobby Cards -->
     <div id="lobby-cards" class="lobby-cards">
-        <div class="card lobby-card" onclick="handlePlaySolo()">
+
+        <!-- Card 1: Play Solo -->
+        <div class="card lobby-card" id="play-solo-card">
             <svg class="card-bg" viewBox="0 0 260 300">
                 <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
             </svg>
             <div class="lobby-card-content">
                 <img src="assets/mobee_logo_sm.png" class="lobby-card-icon" alt="Solo" draggable="false">
-                <div class="lobby-card-label">Play Solo</div>
+                <div class="lobby-card-label">Play Møbee!</div>
+                <div class="lobby-card-hint desktop-only">Flip 3 cards and find the unique shared symbol!</div>
             </div>
         </div>
 
-        <div class="card lobby-card" onclick="openShopModal()">
+        <!-- Card 2: Buy Physical Game -->
+        <div class="card lobby-card" id="shop-card">
             <svg class="card-bg" viewBox="0 0 260 300">
                 <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
             </svg>
             <div class="lobby-card-content">
                 <img src="assets/store.png" class="lobby-card-icon" alt="Store" draggable="false">
-                <div class="lobby-card-label">Get the Cards!</div>
+                <div class="lobby-card-label">Buy a Møbee!</div>
             </div>
         </div>
 
-        <div class="card lobby-card" onclick="handlePlayFriends()">
+        <!-- Card 3: Play with Friends (Multiplayer) -->
+        <div class="card lobby-card" id="play-friends-card">
             <svg class="card-bg" viewBox="0 0 260 300">
                 <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
             </svg>
             <div class="lobby-card-content">
                 <img src="assets/multi.png" class="lobby-card-icon" alt="Friends" draggable="false">
                 <div class="lobby-card-label">Play with Friends</div>
+                <div class="lobby-card-hint desktop-only">2-5 players, ages 5+</div>
             </div>
         </div>
     </div>
 
-    <!-- Friends section (shown after clicking Play with Friends) -->
+    <!-- =================================================================
+         FRIENDS SECTION - Multiplayer Room Setup
+         Hidden by default, shown when "Play with Friends" is clicked
+         ================================================================= -->
     <div id="friends-section" style="display:none;">
         <div id="friends-cards" class="lobby-cards">
-            <!-- Card 1: Room Code -->
-            <div class="card friends-card" onclick="handleRoomCodeCardClick()">
+
+            <!-- Card 1: Room Code Input -->
+            <div class="card friends-card" id="room-code-card">
                 <svg class="card-bg" viewBox="0 0 260 300">
                     <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
                 </svg>
                 <div class="friends-card-content">
                     <div class="friends-card-label">Room Code</div>
                     <div class="friends-input-wrap">
-                        <input type="text" id="lobby-room-code" class="friends-code-input" maxlength="6"
-                               style="text-transform: uppercase;" enterkeyhint="go" inputmode="text" autocapitalize="characters"
-                               onclick="event.stopPropagation()">
-                        <span class="friends-copy-icon" onclick="event.stopPropagation(); handleCopyRoomCode()"></span>
+                        <input type="text" id="lobby-room-code" class="friends-code-input"
+                               maxlength="6" style="text-transform: uppercase;"
+                               enterkeyhint="go" inputmode="text" autocapitalize="characters">
+                        <span class="friends-copy-icon" id="room-code-copy-btn"></span>
                     </div>
-                    <div class="friends-card-hint">Enter or copy code</div>
+                    <div class="friends-card-hint" id="room-code-hint">Enter or copy code</div>
                 </div>
             </div>
 
-            <!-- Card 2: Room Link -->
-            <div class="card friends-card" onclick="handleShareInvite()">
+            <!-- Card 2: Room Link & Invite -->
+            <div class="card friends-card" id="room-link-card">
                 <svg class="card-bg" viewBox="0 0 260 300">
                     <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
                 </svg>
                 <div class="friends-card-content">
                     <div class="friends-card-label">Room Link</div>
                     <div class="friends-input-wrap">
-                        <input type="text" id="lobby-room-link" class="friends-link-input" readonly
-                               onclick="event.stopPropagation(); handleCopyRoomLink()">
-                        <span class="friends-copy-icon" onclick="event.stopPropagation(); handleCopyRoomLink()"></span>
+                        <input type="text" id="lobby-room-link" class="friends-link-input" readonly>
+                        <span class="friends-copy-icon" id="room-link-copy-btn"></span>
                     </div>
-                    <button class="friends-invite-btn" onclick="event.stopPropagation(); handleShareInvite()">Send Invite</button>
+                    <button class="friends-invite-btn" id="send-invite-btn">Send Invite</button>
                 </div>
             </div>
 
-            <!-- Card 3: Start Game -->
-            <div class="card friends-card" id="start-game-card" onclick="handleLobbyStart()">
+            <!-- Card 3: Players & Start Game -->
+            <div class="card friends-card" id="start-game-card">
                 <svg class="card-bg" viewBox="0 0 260 300">
                     <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
                 </svg>
                 <div class="friends-card-content">
                     <div id="lobby-players" class="friends-players"></div>
-                    <button id="lobby-start-btn" class="friends-start-btn" onclick="event.stopPropagation(); handleLobbyStart()">Start Game</button>
+                    <button id="lobby-start-btn" class="friends-start-btn">Start Game</button>
                     <div id="lobby-waiting" class="friends-waiting" style="display:none;">Waiting for host…</div>
                 </div>
             </div>
@@ -131,111 +158,104 @@
     </div>
 </div>
 
-<!-- 12-symbol card preview -->
-<div id="preview" class="lobby" style="display:none;">
-    <div id="preview-cards" class="lobby-cards">
-        <!-- Cards will be generated by JavaScript -->
-    </div>
-    <div class="preview-hint">
-        <p>Level 2: 12-symbol cards</p>
-        <p class="preview-subtext">Unlock by reaching 10 points!</p>
-        <button class="btn btn-primary" onclick="window.location.href='/?lobby'">Back to Lobby</button>
-    </div>
-</div>
-
-<div id="board-container">
+<!-- =================================================================
+     GAME BOARD - Where Cards Are Displayed During Gameplay
+     ================================================================= -->
+<div id="board-container" style="display: none;">
     <div id="game-board"></div>
 </div>
 
+<!-- =================================================================
+     MESSAGE OVERLAY - Countdown, Results, etc.
+     ================================================================= -->
 <div id="message" style="display: none;">
     <h2 id="msg-title">Ready to Play?</h2>
     <p id="msg-body">Click Start to begin!</p>
-    <button onclick="requestStartGame()">Start Round</button>
+    <button id="message-start-btn">Start Round</button>
 </div>
 
+<!-- =================================================================
+     MODALS
+     ================================================================= -->
+
+<!-- Room Join Modal (Legacy - kept for compatibility) -->
 <div id="room-modal" class="modal-overlay">
-    <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-content room-modal-content">
         <h2>Join or Create Room</h2>
         <p>Enter a room code to join friends, or create your own room</p>
-
-        <input type="text" id="room-code-input-modal" placeholder="Enter room code (optional)"
+        <input type="text" id="room-code-input-modal"
+               placeholder="Enter room code (optional)"
                style="width: 100%; padding: 12px; border: 2px solid #BEC887; border-radius: 10px; font-size: 1rem; margin: 20px 0; text-align: center; text-transform: uppercase;">
-
         <div class="modal-actions">
-            <button class="buy-btn" id="join-room-btn">
-                Continue
-            </button>
+            <button class="buy-btn" id="join-room-btn">Continue</button>
         </div>
     </div>
 </div>
 
-<div class="footer-link">
-    <p class="footer-tagline">Flip 3 cards and find the unique shared symbol!</p>
-    <div id="version-display" style="font-size: 0.75rem; color: #999; margin-top: 5px;"></div>
-</div>
-
-<div id="shop-modal" class="modal-overlay" onclick="closeShopModal()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <button class="close-btn" onclick="closeShopModal()">×</button>
-
+<!-- Shop Modal - Buy Physical Cards -->
+<div id="shop-modal" class="modal-overlay">
+    <div class="modal-content shop-modal-content">
+        <button class="close-btn" id="shop-close-btn">×</button>
         <h2>Love the game?</h2>
         <p>Get the real Møbee cards and play with friends!</p>
-
-        <img id="carousel-image" src="" alt="Mobee Physical Cards" width="1600" height="1280" onclick="handleImageClick(event)">
-
+        <img id="carousel-image" src="" alt="Mobee Physical Cards" width="1600" height="1280">
         <div class="modal-actions">
             <a href="https://mobeecards.store/?ref=game" target="_blank" class="buy-btn">
-                Buy a Møbee!
+                Buy at <span style="font-weight: normal;">mobeecards.store</span>
             </a>
-            <button class="stay-btn" onclick="closeShopModal()">
-                Keep Playing
-            </button>
+            <a href="https://www.amazon.com/dp/B0G4XGQ29V?maas=maas_adg_704E540979C84CC3C611AB20B34A1BF2_afap_abs&ref_=aa_maas&tag=maas" target="_blank" class="amazon-btn">
+                <img src="assets/available_at_amazon_en_horizontal_rev.png" alt="Available at Amazon">
+            </a>
         </div>
     </div>
 </div>
 
+<!-- Avatar Selection Modal -->
 <div id="avatar-modal" class="modal-overlay">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <button class="close-btn" onclick="closeAvatarModal()">×</button>
-
+    <div class="modal-content avatar-modal-content">
+        <button class="close-btn" id="avatar-close-btn">×</button>
         <h2>Choose Your Avatar</h2>
         <p>Select an icon to represent you in the game</p>
-
         <div id="avatar-grid" class="avatar-grid">
-            <!-- Avatar options will be generated by JavaScript -->
+            <!-- Avatar options generated by JavaScript -->
         </div>
     </div>
 </div>
 
-<div id="invite-modal" class="modal-overlay" onclick="closeInviteModal()">
-    <div class="modal-content invite-modal-content" onclick="event.stopPropagation()">
-        <button class="close-btn" onclick="closeInviteModal()">×</button>
-
+<!-- Invite Modal (Alternative invite flow) -->
+<div id="invite-modal" class="modal-overlay">
+    <div class="modal-content invite-modal-content">
+        <button class="close-btn" id="invite-close-btn">×</button>
         <h2>Play with Friends!</h2>
         <p>The fastest player wins the round!</p>
-
         <div style="margin: 20px 0;">
             <strong>Room Code:</strong><br>
             <input type="text" id="invite-room-code-editable"
                    style="width: 100%; padding: 12px; margin-top: 5px; border: 2px solid #F9CE79; border-radius: 10px; font-size: 1rem; font-weight: bold; text-align: center; text-transform: uppercase;">
             <small style="color: #666; display: block; margin-top: 5px;">Share this code or change it to join a friend</small>
         </div>
-
         <div style="margin: 20px 0;">
             <strong>Share Link:</strong><br>
             <input type="text" id="invite-share-url" readonly
                    style="width: 100%; padding: 12px; margin-top: 5px; border: 2px solid #F9CE79; border-radius: 10px; font-size: 1rem; text-align: center;">
             <small id="invite-copy-hint" style="color: #666; cursor: pointer; text-decoration: underline;">Click to copy link</small>
         </div>
-
         <div class="modal-actions">
-            <button class="buy-btn" id="join-room-btn-invite" onclick="joinRoomFromInvite()">
-                Join Room
-            </button>
+            <button class="buy-btn" id="join-room-btn-invite">Join Room</button>
         </div>
     </div>
 </div>
 
+<!-- =================================================================
+     FOOTER
+     ================================================================= -->
+<div class="footer-link">
+    <div id="version-display"></div>
+</div>
+
+<!-- =================================================================
+     APPLICATION SCRIPT
+     ================================================================= -->
 <script type="module" src="javascript.js"></script>
 
 </body>

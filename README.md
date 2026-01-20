@@ -4,7 +4,7 @@ A real-time multiplayer card matching game where players race to find the common
 
 ## Quick Links
 
-- **Play Now**: https://mobee-multi.trippplecard.games
+- **Play Now**: https://mobee-10.trippplecard.games
 - **Store**: https://mobeecards.store
 - **Documentation**: See [DOCUMENTATION.md](DOCUMENTATION.md) for complete details
 
@@ -14,23 +14,25 @@ This package contains the complete Møbee Multi game:
 
 ### Core Files
 - `index.html` - Main game page
-- `script.js` - Client-side game logic
+- `javascript.js` - Client-side game logic
 - `style.css` - All styles and animations
-- `version.js` - Version tracking (v1.1.0)
+- `version.js` - Version tracking
 
 ### Server
 - `party/server.js` - PartyKit multiplayer server
-- `party/game-math.js` - Card generation algorithm
+- `party/game-math.js` - Card generation algorithm (projective plane math)
 - `partykit.json` - PartyKit configuration
 
 ### Assets
 - `assets/mobee_sprite.svg` - All symbols and avatars in one sprite sheet
+- `assets/symbols/` - Individual symbol PNG files (30 symbols)
 - `assets/mobee_logo.png` - Main logo
 - `assets/icons/` - PWA icons
 - `assets/mobee-box/` - Product carousel images
 
 ### Documentation
 - `DOCUMENTATION.md` - Complete technical documentation
+- `CLAUDE.md` - AI assistant guidance
 - `README.md` - This file
 
 ## Quick Start
@@ -70,40 +72,45 @@ This package contains the complete Møbee Multi game:
 
 ## Tech Stack
 
-- **Frontend**: Vanilla JavaScript, HTML5, CSS3
-- **Backend**: PartyKit (real-time multiplayer)
+- **Frontend**: Vanilla JavaScript (ES6 modules), HTML5, CSS3
+- **Backend**: PartyKit (real-time multiplayer WebSocket server)
 - **Hosting**: Vercel (frontend), PartyKit (backend)
 - **Monitoring**: Sentry error tracking
 
 ## Features
 
-- 🎮 Real-time multiplayer (2-5 players)
-- 👥 Private rooms with shareable codes
-- 🎨 64 customizable avatars
-- ⏱️ 60-second timed rounds
-- 📱 Mobile-optimized (iOS Safari tested)
-- 🌐 Offline PWA support
-- 📊 Live scoreboard
-- 🎯 Single-player practice mode
+- Real-time multiplayer (2-5 players)
+- Private rooms with shareable codes
+- 130 customizable avatars
+- 60-second timed rounds
+- Mobile-optimized (iOS Safari tested)
+- Offline PWA support
+- Live scoreboard
+- Single-player practice mode
+- Two difficulty levels (7 or 12 symbols per card)
+- 3-2-1 countdown for multiplayer games
 
 ## Game Mechanics
 
 - Find the one common symbol shared between three cards
-- Each card has 7 symbols from a pool of 57
+- **Level 1**: 7 symbols per card (from pool of 14)
+- **Level 2**: 12 symbols per card (from pool of 30)
 - Correct answer: +1 point
 - Wrong answer: -1 point (min 0)
 - Fastest correct click wins the round
+- Score 6+ correct to level up
 
 ## Room System
 
 Create or join rooms using custom codes:
-- `https://mobee-multi.trippplecard.games/?room=YOUR_CODE`
+- `https://mobee-10.trippplecard.games/?room=YOUR_CODE`
 - Share link with friends to play together
 - Maximum 5 players per room
+- Room link takes you directly to Play with Friends
 
 ## Version
 
-Current version: **v1.1.0**
+Current version: **v1.5.118**
 
 ## Support
 

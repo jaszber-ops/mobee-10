@@ -3,15 +3,16 @@
 ## Table of Contents
 1. [Game Overview](#game-overview)
 2. [Game Mechanics](#game-mechanics)
-3. [Invitation System](#invitation-system)
-4. [Avatar Selection](#avatar-selection)
-5. [Technical Stack](#technical-stack)
-6. [Architecture](#architecture)
-7. [Implementation Details](#implementation-details)
-8. [Online Components](#online-components)
-9. [PartyKit Integration](#partykit-integration)
-10. [Sentry Error Tracking](#sentry-error-tracking)
-11. [Deployment](#deployment)
+3. [Difficulty Levels](#difficulty-levels)
+4. [Invitation System](#invitation-system)
+5. [Avatar Selection](#avatar-selection)
+6. [Technical Stack](#technical-stack)
+7. [Architecture](#architecture)
+8. [Implementation Details](#implementation-details)
+9. [Online Components](#online-components)
+10. [PartyKit Integration](#partykit-integration)
+11. [Sentry Error Tracking](#sentry-error-tracking)
+12. [Deployment](#deployment)
 
 ---
 
@@ -20,51 +21,83 @@
 Møbee Multi is a real-time multiplayer card matching game based on the physical Møbee card game. Players compete to be the first to identify the common symbol shared between three cards displayed simultaneously.
 
 ### Core Concept
-Each card in Møbee contains exactly 7 symbols arranged in a hexagonal pattern. The mathematical guarantee is that any two cards share exactly one common symbol. In the game, three cards are displayed, and players must quickly find and click on the symbol that appears on all three cards.
+Each card in Møbee contains symbols arranged in a hexagonal pattern. The mathematical guarantee is that any two cards share exactly one common symbol. In the game, three cards are displayed, and players must quickly find and click on the symbol that appears on all three cards.
 
 ### Game Modes
 - **Single Player**: Practice mode with immediate card replacement (300ms delay)
-- **Multiplayer** (2-5 players): Competitive mode with 60-second timed rounds and 4-second celebration/preparation between rounds
+- **Multiplayer** (2-5 players): Competitive mode with 60-second timed rounds and 3-2-1 countdown between rounds
 
 ### Scoring System
 - **Correct answer**: +1 point
 - **Wrong answer**: -1 point (minimum score: 0)
 - Winner is determined by the fastest correct click
+- Score 6+ correct answers to level up to harder cards
 
 ---
 
 ## Game Mechanics
 
 ### Symbol System
-The game uses 57 unique symbols arranged in an 8-column sprite sheet:
-- Total symbols: 57 (8×8 grid with 7 unused cells)
-- Each card displays 7 symbols from the pool
-- Symbols are positioned at 7 fixed locations on hexagonal cards
-- Mathematical algorithm ensures exactly one shared symbol between any two cards
+The game uses 30 unique symbols as individual PNG files:
+- Located in `assets/symbols/` directory
+- Each symbol has a descriptive name (dog, cat, star, etc.)
+- Symbols are randomly selected for each deck generation
 
 ### Card Generation
-Cards are generated using a projective plane mathematical structure:
-- 8 cards total in the deck
-- Each card is shuffled independently for variety
-- Cards are selected without replacement until all 8 are used
-- Algorithm in `party/game-math.js` handles deck generation
+Cards are generated using projective plane mathematics:
+
+**Level 1 (7 symbols per card)**:
+- Uses affine plane geometry over GF(2) (binary field)
+- 8 cards in deck, 14 unique symbols
+- Each card represented as 3-bit vector
+- Algorithm in `party/game-math.js`
+
+**Level 2 (12 symbols per card)**:
+- Pre-validated deck of 10 cards
+- Uses all 30 available symbols
+- Cards shuffled for variety each game
 
 ### Round Flow
 1. **Lobby State**: Players wait for game start
-2. **Round Start**: Timer begins (60 seconds), three cards displayed
-3. **Player Action**: Players click symbols they think are common
-4. **Validation**: Server validates the guess
-5. **Result**:
-   - Correct: Winner announced, card replaced (single player) or all 3 cards replaced (multiplayer)
+2. **Countdown**: 3-2-1 countdown (multiplayer with 2+ players only)
+3. **Round Start**: Timer begins (60 seconds), three cards displayed
+4. **Player Action**: Players click symbols they think are common
+5. **Validation**: Server validates the guess
+6. **Result**:
+   - Correct: Card replaced, next round starts
    - Wrong: Penalty applied, new round with 3 fresh cards
-6. **Auto-advance**: Next round starts automatically (300ms for single player, 4s for multiplayer)
+7. **Auto-advance**: Next round starts automatically
 
 ### Timer System
 - 60-second countdown per game session
 - Starts on first round, continues through multiple rounds
-- Pause/resume during winner celebrations
+- Pause/resume during winner celebrations (multiplayer)
 - Displays with tabular numerals for smooth animation
-- Resets when returning to lobby
+- Urgent animation when 5 seconds or less remain
+
+---
+
+## Difficulty Levels
+
+### Level 1: Beginner (7 Symbols)
+- 7 symbols per card
+- 8 cards total in deck
+- 14 unique symbols in pool
+- Center symbol + 6 arranged around
+- Easier to spot the common symbol
+
+### Level 2: Advanced (12 Symbols)
+- 12 symbols per card
+- 10 cards total in deck
+- 30 unique symbols in pool
+- Inner/outer cardinal + diagonal positions
+- More challenging visual search
+
+### Level Progression
+- Start at Level 1
+- Score 6+ correct answers to qualify for Level 2
+- Wrong answer at score 0 drops back to Level 1
+- Level up shown with product image (physical card game promo)
 
 ---
 
@@ -72,63 +105,43 @@ Cards are generated using a projective plane mathematical structure:
 
 ### Room Code System
 Players can create or join private rooms using alphanumeric room codes:
-- Room code is part of the URL: `https://mobee-multi.trippplecard.games/?room=ABCD`
-- Automatically generated if not specified
+- Room code is part of the URL: `https://mobee-10.trippplecard.games/?room=ABCDEF`
+- 6-character alphanumeric codes (A-Z, 0-9)
 - Case-insensitive
-- Persistent for the session
+- Excludes confusing characters (I, 1, O, 0)
 
 ### Joining Flow
-1. **Initial Connection**:
-   - User visits site with or without room code
-   - Room modal appears if first-time visitor
-   - Can enter custom room code or use auto-generated one
-
-2. **Invitation Modal**:
-   - Accessible by clicking room code in UI
-   - Shows current room code (editable)
-   - Provides shareable link
-   - Click-to-copy functionality for quick sharing
-
-3. **Link Sharing**:
-   - Direct URL sharing: `?room=CUSTOM`
-   - URL automatically includes room parameter
-   - Friends clicking link join the same room instantly
+1. **Direct Link**: Clicking a room link goes directly to Play with Friends
+2. **Manual Entry**: Enter room code in the Room Code card
+3. **Copy/Share**: Copy room link or use native share on mobile
 
 ### Room Management
 - Maximum 5 players per room
 - Players are automatically removed on disconnect
 - Room persists as long as any player is connected
-- No room expiration (handled by PartyKit's persistence layer)
+- Host (first player) can start the game
 
 ---
 
 ## Avatar Selection
 
 ### Avatar System
-Players can personalize their identity with cute animal avatars:
-- **Total avatars**: 64 unique animal illustrations
+Players personalize their identity with avatars from the sprite sheet:
+- **Total avatars**: 130 (13 columns × 10 rows)
 - **Sprite sheet**: `assets/mobee_sprite.svg` (841.89×595.28px)
-- **Grid layout**: 8 columns × 8 rows
 - **Cell size**: 43.61px per icon
 
 ### Avatar Storage
 - Stored in `localStorage` as `mobee_avatar`
-- Format: `{col}-{row}` (e.g., "3-5")
+- Format: `col,row` (e.g., "3,5")
 - Persists across sessions
 - Synchronized to server on connection
 
-### Avatar Selection UI
-- Grid modal with all 64 avatars
-- Hover to preview with scale effect
-- Click to select
-- Selected avatar has border highlight
-- Avatar appears next to player name in scoreboard
-
 ### Avatar Display
-- Rendered using CSS background-position to show specific sprite
-- Displayed as 32px circles in scoreboard
-- Scales to 48px in avatar selection grid
-- Uses `background-size` calculation: `sprite_dimension × (display_size / cell_size)`
+- Rendered using CSS background-position
+- 32px in scoreboard, 36px during gameplay
+- 48px in avatar selection grid
+- Yellow border for own avatar, green for others
 
 ---
 
@@ -138,7 +151,7 @@ Players can personalize their identity with cute animal avatars:
 - **HTML5** with semantic markup
 - **CSS3** with modern features:
   - CSS Grid and Flexbox layouts
-  - CSS Custom Properties for theming
+  - CSS Custom Properties (variables)
   - Media queries for responsive design
   - Animations and transitions
 - **Vanilla JavaScript** (ES6+ modules)
@@ -146,18 +159,13 @@ Players can personalize their identity with cute animal avatars:
 
 ### Backend/Server
 - **PartyKit** - Real-time multiplayer infrastructure
-- **Vercel** - Static site hosting and edge functions
+- **Vercel** - Static site hosting
 - **Sentry** - Error tracking and monitoring
 
 ### Assets
-- **SVG sprite sheets** for symbols and avatars
-- **PNG images** for logos and marketing materials
+- **SVG sprite sheet** for avatars
+- **PNG images** for symbols, logos, and marketing
 - **Optimized images** for fast loading
-
-### Build/Deploy
-- **Vercel CLI** for production deployments
-- **PartyKit CLI** for server deployments
-- **Git** for version control
 
 ---
 
@@ -165,50 +173,70 @@ Players can personalize their identity with cute animal avatars:
 
 ### File Structure
 ```
-mobee_multi/
+mobee-10/
 ├── index.html              # Main HTML entry point
-├── style.css               # All game styles
-├── script.js               # Client-side game logic
+├── javascript.js           # Client-side game logic (~1800 lines)
+├── style.css               # All game styles (~1175 lines)
 ├── version.js              # Version tracking
 ├── service-worker.js       # PWA offline support
 ├── party/
-│   ├── server.js          # PartyKit multiplayer server
-│   └── game-math.js       # Card generation algorithm
+│   ├── server.js           # PartyKit multiplayer server (~400 lines)
+│   └── game-math.js        # Card generation algorithm (~130 lines)
 ├── assets/
-│   ├── mobee_sprite.svg   # Symbol & avatar sprite sheet
-│   ├── mobee_logo.png     # Main logo
-│   ├── mobee_logo_sm.png  # Card watermark
-│   ├── store.png          # Store icon
-│   ├── icons/             # PWA icons
-│   └── mobee-box/         # Product carousel images
-├── partykit.json          # PartyKit configuration
-└── vercel.json            # Vercel deployment config
+│   ├── mobee_sprite.svg    # Avatar sprite sheet
+│   ├── symbols/            # 30 individual symbol PNGs
+│   ├── mobee_logo.png      # Main logo
+│   ├── mobee_logo_sm.png   # Card watermark
+│   ├── icons/              # PWA icons
+│   └── mobee-box/          # Product carousel images (15)
+├── partykit.json           # PartyKit configuration
+├── vercel.json             # Vercel deployment config
+├── CLAUDE.md               # AI assistant guidance
+├── DOCUMENTATION.md        # This file
+└── README.md               # Quick start guide
 ```
 
 ### Component Architecture
 
-#### Client (`script.js`)
-1. **Connection Manager**: Handles PartySocket WebSocket connection
-2. **Game State**: Manages local game state and UI updates
-3. **Event Handlers**: User interactions (clicks, modal interactions)
-4. **Rendering Engine**: Card and symbol rendering with sprite sheets
-5. **Timer System**: Countdown timer with pause/resume
-6. **Scoreboard**: Player list with avatars and scores
+#### Client (`javascript.js`)
+Organized into 15 sections:
+1. Imports & Initialization
+2. iOS Zoom & Gesture Prevention
+3. Game Configuration
+4. Player Identity & Session
+5. Avatar System
+6. Room & Connection Setup
+7. WebSocket Connection
+8. UI State Management
+9. Game Timer
+10. Single-Player Watchdog
+11. Lobby Management
+12. Lobby Event Handlers
+13. Connection Event Handlers
+14. Shop Modal
+15. Invite Modal
 
 #### Server (`party/server.js`)
-1. **Connection Management**: Player joins/leaves
-2. **Game State Manager**: Authoritative game state
-3. **Round Manager**: Card dealing and validation
-4. **Score System**: Points calculation and tracking
-5. **Broadcast System**: State synchronization to all clients
+Organized into sections:
+1. Constants (timing, thresholds, limits)
+2. Helper Functions (payload creation)
+3. Main Server Class
+4. Connection Management
+5. Message Handling
+6. Game Logic (rounds, scoring, levels)
+7. Broadcast System
 
 ### Data Flow
 ```
 Client Action (Click Symbol)
     ↓
-WebSocket Message (GUESS)
+WebSocket Message (GUESS + sessionToken)
     ↓
 PartyKit Server Validation
+    ↓
+Rate Limit Check (150ms)
+    ↓
+Symbol Validation
     ↓
 Update Game State
     ↓
@@ -223,94 +251,96 @@ Auto-start Next Round
 
 ## Implementation Details
 
-### Symbol Rendering Optimization
-The game uses sprite sheets instead of individual files for performance:
-
+### Symbol Rendering
+Individual PNG files are used for symbols:
 ```javascript
-// Calculate sprite position
-const cellLeft = SPRITE_GRID_START_X + (col * SPRITE_CELL_SIZE);
-const cellTop = SPRITE_GRID_START_Y + (row * SPRITE_CELL_SIZE);
+const SYMBOLS = {
+    'dog': 'assets/symbols/dog.png',
+    'cat': 'assets/symbols/cat.png',
+    // ... 30 total symbols
+};
 
-// Scale to display size
-const scaleFactor = displaySize / SPRITE_CELL_SIZE;
-const bgX = -(cellLeft * scaleFactor);
-const bgY = -(cellTop * scaleFactor);
-
-// Apply as background
-background-image: url('assets/mobee_sprite.svg');
-background-size: ${svgWidth * scaleFactor}px ${svgHeight * scaleFactor}px;
-background-position: ${bgX}px ${bgY}px;
+// Preload all symbols
+Object.values(SYMBOLS).forEach(src => {
+    const im = new Image();
+    im.src = src;
+});
 ```
 
 ### Card Positioning
-Cards are positioned in a triangular formation using CSS:
+Cards are positioned in a triangular formation:
 ```css
 .card:nth-child(1) {
-  top: calc(50% - var(--spread-radius));
-  left: 50%;
+    top: calc(50% - var(--spread-radius));
+    left: 50%;
 }
 .card:nth-child(2) {
-  top: calc(50% + (var(--spread-radius) * 0.5));
-  left: calc(50% + (var(--spread-radius) * 0.866));
+    top: calc(50% + (var(--spread-radius) * 0.5));
+    left: calc(50% + (var(--spread-radius) * 0.866));
 }
 .card:nth-child(3) {
-  top: calc(50% + (var(--spread-radius) * 0.5));
-  left: calc(50% - (var(--spread-radius) * 0.866));
+    top: calc(50% + (var(--spread-radius) * 0.5));
+    left: calc(50% - (var(--spread-radius) * 0.866));
 }
 ```
 
-### Player Persistence
-Players are tracked across reconnections:
+### Session Token Security
+Each connection receives a unique session token:
 ```javascript
-// Generate persistent ID
-const playerId = localStorage.getItem('mobee_player_id') ||
-                 'p_' + Math.random().toString(36).substr(2, 9);
-localStorage.setItem('mobee_player_id', playerId);
+// Server generates token on connect
+const sessionToken = crypto.randomUUID();
+conn.send(JSON.stringify({ type: "SESSION", sessionToken }));
 
-// Pass to PartyKit connection
-const ws = new PartySocket({
-  host: PARTYKIT_HOST,
-  room: roomCode,
-  query: { playerId }
+// Client includes token with guesses
+safeSend({
+    type: "GUESS",
+    symbol: symbolName,
+    sessionToken: sessionToken
 });
 ```
 
 ### Mobile Optimization
-- Responsive symbol sizing: 34% container width, 0.65 scale on mobile
-- Touch-optimized: `touch-action: none`, proper pointer events
-- Safe area support: `padding-top: env(safe-area-inset-top)`
-- Viewport fit: `viewport-fit=cover` for edge-to-edge display
+- Responsive symbol sizing with CSS variables
+- Touch-optimized: `touch-action: none`
+- Safe area support: `env(safe-area-inset-top)`
+- Viewport fit: `viewport-fit=cover`
+- Transform scale for iPhone: `scale(1.12)`
 
 ---
 
 ## Online Components
 
 ### Real-time Multiplayer
-All game state is synchronized via WebSocket connections:
+All game state is synchronized via WebSocket:
 - Player connections/disconnections
 - Card dealing and round starts
 - Guesses and validations
 - Score updates
 - Timer synchronization
+- Level changes
 
 ### Message Types
 
 #### Client → Server
-- `START_GAME`: Request new round
-- `GUESS`: Submit symbol guess with card index
-- `GET_SCORES`: Request current scores
-- `UPDATE_AVATAR`: Change player avatar
-- `END_GAME`: Timer reached zero
-- `RESET_GAME`: Reset scores and return to lobby
+| Message | Description |
+|---------|-------------|
+| `START_GAME` | Request new round/game |
+| `GUESS` | Submit symbol guess with sessionToken |
+| `UPDATE_AVATAR` | Change player avatar |
+| `END_GAME` | Timer reached zero |
+| `RESET_GAME` | Reset scores and return to lobby |
 
 #### Server → Client
-- `NEW_ROUND`: Three cards with shuffled symbols
-- `WINNER`: Announce round winner
-- `WRONG_GUESS`: Wrong answer penalty
-- `UPDATE_SCORES`: Scoreboard update
-- `GAME_RESET`: Return to lobby
-- `ROOM_FULL`: Reject connection (5 player limit)
-- `JOIN_AS_SPECTATOR`: New player joins mid-round
+| Message | Description |
+|---------|-------------|
+| `SESSION` | Provide session token |
+| `NEW_ROUND` | Three cards with symbols and level |
+| `WINNER` | Announce round winner |
+| `WRONG_GUESS` | Wrong answer penalty |
+| `UPDATE_SCORES` | Scoreboard update |
+| `GAME_OVER` | Game ended, show results |
+| `GAME_RESET` | Return to lobby |
+| `ROOM_FULL` | Reject connection (5 player limit) |
 
 ### State Persistence
 PartyKit provides durable state storage:
@@ -323,12 +353,12 @@ let state = await this.party.storage.get("gamestate");
 ```
 
 State includes:
-- Current deck and shuffled cards
+- Current deck and cards
 - Active players and scores
-- Player avatars
-- Game status (waiting/playing)
+- Player avatars and levels
+- Game status and timing
 - Current answer
-- Game start time
+- Session tokens
 
 ---
 
@@ -337,96 +367,56 @@ State includes:
 ### Configuration (`partykit.json`)
 ```json
 {
-  "name": "mobee-multi",
-  "main": "party/server.js",
-  "compatibilityDate": "2024-01-10"
+    "name": "mobee-multi",
+    "main": "party/server.js",
+    "compatibilityDate": "2024-01-10"
 }
 ```
 
-### Server Class Structure
+### Server Constants
 ```javascript
-export default class MobeeServer {
-  constructor(party) {
-    this.party = party;
-  }
-
-  async onConnect(conn) {
-    // Handle new player connection
-  }
-
-  async onMessage(message, sender) {
-    // Handle messages from clients
-  }
-
-  async onClose(conn) {
-    // Handle player disconnect
-  }
-
-  async startNewRound(state, replaceCardIndex) {
-    // Deal cards and broadcast
-  }
-}
+const LEVEL_UP_THRESHOLD = 6;      // Score to level up
+const LEVEL_DOWN_THRESHOLD = 0;    // Score to level down
+const MAX_PLAYERS = 5;             // Max per room
+const GAME_DURATION_MS = 60000;    // 60 seconds
+const COUNTDOWN_DURATION_MS = 3000; // 3-2-1 countdown
+const GUESS_RATE_LIMIT_MS = 150;   // Anti-spam
+const SINGLE_PLAYER_DELAY = 300;   // Next round delay
+const MULTI_PLAYER_DELAY = 4000;   // Winner celebration
 ```
 
 ### Connection Management
-- Each connection has a unique `conn.id`
-- Persistent player ID passed via query params
-- Automatic cleanup of disconnected players
-- Maximum 5 players per room enforced
-
-### Card Replacement Strategy
-- **Correct answer**: Replace only the clicked card (single player) or all 3 cards (multiplayer)
-- **Wrong answer**: Replace all 3 cards
-- Cards are selected from remaining deck without replacement
-- Ensures variety and prevents repetition
-
-### Room Isolation
-Each room code creates an isolated PartyKit instance:
-- Separate game state
-- Independent player lists
-- Isolated message broadcasts
-- No cross-room communication
+- Each connection has unique `conn.id`
+- Persistent player ID via query params
+- Automatic cleanup on disconnect
+- Message queue for sequential processing
 
 ---
 
 ## Sentry Error Tracking
 
 ### Integration
-Sentry is loaded via CDN with automatic initialization:
 ```html
 <script
-  src="https://js-de.sentry-cdn.com/9ed59983028a134d7d78bce7324ce25f.min.js"
-  crossorigin="anonymous"
-  onload="
-    if (typeof Sentry !== 'undefined' && Sentry.setUser) {
-      const playerId = localStorage.getItem('mobee_player_id');
-      if (playerId) {
-        Sentry.setUser({ id: playerId });
-      }
-    }
-  "
+    src="https://js-de.sentry-cdn.com/..."
+    onload="
+        if (Sentry.setUser) {
+            const playerId = localStorage.getItem('mobee_player_id');
+            if (playerId) Sentry.setUser({ id: playerId });
+        }
+    "
 ></script>
 ```
 
-### User Context
-- Each player is tagged with their persistent `playerId`
-- Helps track errors per user
-- Maintains privacy (no PII)
-
-### Captured Events
-Sentry automatically captures:
-- JavaScript errors and exceptions
-- Unhandled promise rejections
-- Browser console errors
-- Network errors
-- Performance metrics
-
-### Benefits
-- Real-time error alerts
-- Stack traces for debugging
-- User impact analysis
-- Performance monitoring
-- Release tracking with version numbers
+### Custom Error Logging
+```javascript
+if (typeof Sentry !== 'undefined') {
+    Sentry.captureException(error, {
+        tags: { component: 'websocket' },
+        extra: { roomCode, readyState }
+    });
+}
+```
 
 ---
 
@@ -434,61 +424,35 @@ Sentry automatically captures:
 
 ### Vercel Deployment (Frontend)
 ```bash
-# Deploy to production
 vercel --prod
 
-# Production URLs
-https://mobeemulti.vercel.app
-https://mobee-multi.trippplecard.games
-```
-
-**Configuration** (`vercel.json`):
-```json
-{
-  "buildCommand": "echo 'No build needed'",
-  "outputDirectory": ".",
-  "cleanUrls": true,
-  "trailingSlash": false
-}
+# Production URL
+https://mobee-10.trippplecard.games
 ```
 
 ### PartyKit Deployment (Backend)
 ```bash
-# Deploy multiplayer server
 npx partykit deploy
 
 # Server URL
-wss://mobee-multi.partykit.dev
+wss://mobee-multi.jaszber-ops.partykit.dev
 ```
 
 ### Deployment Checklist
 1. Update version in `version.js`
-2. Test locally
-3. Deploy PartyKit server: `npx partykit deploy`
-4. Deploy Vercel frontend: `vercel --prod`
-5. Verify both URLs are working
-6. Check Sentry for any deployment errors
+2. Test locally with `npx partykit dev`
+3. Deploy PartyKit: `npx partykit deploy`
+4. Deploy Vercel: `vercel --prod`
+5. Verify game works at production URL
+6. Check Sentry for any errors
 
 ### Version Management
-Current version: **v1.1.0**
+Current version: **v1.5.118**
 
 Version format: `MAJOR.MINOR.PATCH`
-- **MAJOR**: Major feature additions or breaking changes
+- **MAJOR**: Breaking changes or major features
 - **MINOR**: New features, significant improvements
 - **PATCH**: Bug fixes, small adjustments
-
-Version is displayed in:
-- Console log on page load
-- Footer of the page
-- Sentry release tracking
-
-### Environment Variables
-None required - all configuration is hardcoded for simplicity.
-
-### Domain Configuration
-- **Primary**: `https://mobee-multi.trippplecard.games`
-- **Secondary**: `https://mobeemulti.vercel.app`
-- **PartyKit**: `wss://mobee-multi.partykit.dev`
 
 ---
 
@@ -502,17 +466,16 @@ npm install
 # Run PartyKit dev server
 npx partykit dev
 
-# Serve frontend
-python3 -m http.server 8000
-# or
+# Serve frontend (separate terminal)
 npx serve .
+# or: python3 -m http.server 8000
 ```
 
 ### Testing Multiplayer
 1. Open multiple browser windows/tabs
-2. Use different room codes for isolation
+2. Use same room code: `?room=TEST`
 3. Test with different player counts (1-5)
-4. Test edge cases: disconnections, rejoins, rapid clicks
+4. Test edge cases: disconnections, rapid clicks
 
 ### Browser Compatibility
 - Chrome/Edge: Full support
@@ -520,66 +483,13 @@ npx serve .
 - Firefox: Full support
 - Mobile browsers: Optimized for touch
 
-### Performance Optimization
-- Sprite sheets reduce HTTP requests
-- CSS animations use GPU acceleration
-- WebSocket for efficient real-time sync
-- Service worker for offline support
-- Lazy loading for carousel images
-
----
-
-## Future Enhancements
-
-### Potential Features
-- Private rooms with passwords
-- Tournament mode with brackets
-- Leaderboards and statistics
-- Sound effects and music
-- More symbols and cards
-- Custom card themes
-- Replay system
-- Achievements and badges
-
-### Technical Improvements
-- TypeScript migration
-- End-to-end testing
-- Automated deployment pipeline
-- Analytics dashboard
-- Admin panel for room management
-
 ---
 
 ## Credits
 
 **Game Design**: Based on the physical Møbee card game
 **Development**: Built with Vercel, PartyKit, and modern web standards
-**Version**: 1.1.0
+**Version**: 1.5.118
 **License**: Proprietary
 
-For support or questions: https://mobeecards.store
-
----
-
-## Appendix
-
-### URLs
-- **Production Game**: https://mobee-multi.trippplecard.games
-- **Vercel Dashboard**: https://vercel.com/ajs-projects-641d0e7e/mobee_multi
-- **PartyKit Dashboard**: https://partykit.io
-- **Store**: https://mobeecards.store
-- **Sentry Dashboard**: https://sentry.io
-
-### Key Files Reference
-- **Client Logic**: `script.js` (~1000 lines)
-- **Server Logic**: `party/server.js` (~393 lines)
-- **Styles**: `style.css` (~507 lines)
-- **Game Math**: `party/game-math.js` (Card generation algorithm)
-- **HTML**: `index.html` (Main structure with modals)
-
-### Performance Metrics
-- Initial load: ~200KB total
-- Sprite sheet: ~180KB (all symbols + avatars)
-- First contentful paint: <1s
-- Time to interactive: <2s
-- WebSocket latency: <100ms (typical)
+For support: https://mobeecards.store

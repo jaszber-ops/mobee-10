@@ -237,18 +237,9 @@ let conn = null;
 // Check if user clicked logo to go to preview (?preview parameter)
 const isPreviewRequest = urlParams.has('preview');
 
-// Check if user wants to play solo (?solo parameter)
-const isSoloRequest = urlParams.has('solo');
-
 // Check if user clicked logo to go to lobby (?lobby parameter)
 const isLobbyRequest = urlParams.has('lobby');
-
-if (isSoloRequest) {
-    // Solo mode: use a unique room based on playerId to ensure solo play
-    history.replaceState(null, null, window.location.pathname);
-    roomCode = `solo_${playerId}`;
-    isMultiplayerMode = false;
-} else if (isLobbyRequest) {
+if (isLobbyRequest) {
     // Clear the query param and create a new room
     history.replaceState(null, null, window.location.pathname);
     localStorage.removeItem('mobee_last_room');
@@ -343,22 +334,18 @@ function setupConnectionHandlers() {
 
 // Connection Feedback & Room Sharing
 conn.addEventListener("open", () => {
-    console.log("Connected to room:", roomCode, "isSoloRequest:", isSoloRequest, "isLobbyRequest:", isLobbyRequest);
+    console.log("Connected to room:", roomCode);
 
-    // Update URL to show room code - but NOT for solo mode or lobby mode
-    if (!isSoloRequest && !isLobbyRequest) {
-        const currentUrl = new URL(window.location);
-        if (currentUrl.searchParams.get('room') !== roomCode) {
-            currentUrl.searchParams.set('room', roomCode);
-            history.replaceState(null, null, currentUrl);
-        }
+    // Update URL to show room code (without reloading)
+    const currentUrl = new URL(window.location);
+    if (currentUrl.searchParams.get('room') !== roomCode) {
+        currentUrl.searchParams.set('room', roomCode);
+        history.replaceState(null, null, currentUrl);
     }
 
     // Clear any error messages
-    const msgElLocal = document.getElementById('message');
-    const msgTitleLocal = document.getElementById('msg-title');
-    if (msgElLocal && msgElLocal.style.display === 'block' && msgTitleLocal && msgTitleLocal.innerText === "Connection Error") {
-        msgElLocal.style.display = 'none';
+    if (msgEl.style.display === 'block' && msgTitle.innerText === "Connection Error") {
+        msgEl.style.display = 'none';
     }
 
     // Send avatar to server
@@ -367,14 +354,8 @@ conn.addEventListener("open", () => {
         avatar: selectedAvatar
     });
 
-    // Solo mode: auto-start the game
-    if (isSoloRequest) {
-        console.log("Solo mode - sending START_GAME");
-        safeSend({ type: "START_GAME" });
-    } else {
-        // Show lobby instead of modal
-        showLobby();
-    }
+    // Show lobby instead of modal
+    showLobby();
 });
 
 // UI Elements
@@ -598,8 +579,13 @@ function resetLobbyButtons() {
 // Global lobby button handlers (called from HTML onclick)
 window.handlePlaySolo = function() {
     console.log("Play Solo clicked");
-    // Navigate to solo mode (no room parameter)
-    window.location.href = '/?solo';
+    isMultiplayerMode = false;
+    const btn = document.getElementById('play-solo-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Starting...';
+    }
+    safeSend({ type: "START_GAME" });
 };
 
 window.handlePlayFriends = function() {
@@ -963,21 +949,15 @@ conn.addEventListener("message", (event) => {
             // Server sent 3 cards (arrays of IDs). Hide modal, show board.
             console.log("NEW_ROUND received:", {
                 cards: data.cards,
-                level: data.level,
                 gameStartTime: data.gameStartTime,
                 currentGameStartTime: gameStartTime
             });
-
-            // Update current level
-            if (data.level) {
-                currentGameLevel = data.level;
-            }
 
             // Hide any modal and start playing immediately
             // (GAME_STARTING already handled the countdown for multiplayer)
             msgEl.style.display = 'none';
             document.body.classList.add("playing");
-            renderBoard(data.cards, false, currentGameLevel);
+            renderBoard(data.cards);
 
             // Use server's game start time (all players synchronized)
             if (data.gameStartTime) {
@@ -1023,11 +1003,8 @@ conn.addEventListener("message", (event) => {
 
         case "JOIN_AS_SPECTATOR":
             // Joined mid-game - show cards but disable interaction
-            console.log("Joined as spectator - watching current round, level:", data.level);
-            if (data.level) {
-                currentGameLevel = data.level;
-            }
-            renderBoard(data.cards, true, currentGameLevel); // true = spectator mode
+            console.log("Joined as spectator - watching current round");
+            renderBoard(data.cards, true); // true = spectator mode
 
             // Update scores to show all players
             updateScoreboard(data.scores, data.avatars);
@@ -1081,12 +1058,8 @@ conn.addEventListener("message", (event) => {
 
 // --- 5. RENDER THE BOARD (Server Driven) ---
 // serverCards is: [[symbol1, symbol2, ...], ...]
-
-// Level 1: 7-symbol card rotations (center symbol + 6 around it)
-const ROTATIONS_7 = [0, 180, -120, -60, 0, 60, 120];
-
-// Track current game level
-let currentGameLevel = 1;
+// 12-symbol card positions (matching SYMBOL_POSITIONS_12)
+const ROTATIONS_12 = [180, 180, -135, -90, -90, -45, 0, 0, 45, 90, 90, 135];
 
 // Scale the game board to fit available space
 const BASE_BOARD_SIZE = 600; // Fixed base size in pixels
@@ -1117,8 +1090,8 @@ window.addEventListener('orientationchange', () => {
 // Initial scale after DOM is ready
 setTimeout(scaleGameBoard, 100);
 
-function renderBoard(serverCards, isSpectator = false, level = currentGameLevel) {
-    console.log("renderBoard called with:", serverCards, "spectator:", isSpectator, "level:", level);
+function renderBoard(serverCards, isSpectator = false) {
+    console.log("renderBoard called with:", serverCards, "spectator:", isSpectator);
 
     // Find and log the common symbol
     const c1 = serverCards[0];
@@ -1146,127 +1119,66 @@ function renderBoard(serverCards, isSpectator = false, level = currentGameLevel)
         svgBg.innerHTML = `<path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />`;
         cardEl.appendChild(svgBg);
 
-        if (level === 2) {
-            // Level 2: 12-symbol layout
-            const symbolsContainer = document.createElement('div');
-            symbolsContainer.className = 'card-12-symbols';
+        // Create 12-symbol container
+        const symbolsContainer = document.createElement('div');
+        symbolsContainer.className = 'card-12-symbols';
 
-            // Add center logo
-            const centerLogo = document.createElement('img');
-            centerLogo.src = 'assets/mobee_logo_sm.png';
-            centerLogo.className = 'center-logo';
-            centerLogo.alt = 'Møbee';
-            centerLogo.draggable = false;
-            symbolsContainer.appendChild(centerLogo);
+        // Add center logo
+        const centerLogo = document.createElement('img');
+        centerLogo.src = 'assets/mobee_logo_sm.png';
+        centerLogo.className = 'center-logo';
+        centerLogo.alt = 'Møbee';
+        centerLogo.draggable = false;
+        symbolsContainer.appendChild(centerLogo);
 
-            cardSymbolIds.forEach((symbolName, i) => {
-                const symbolImg = SYMBOLS[symbolName];
-                if (!symbolImg) return;
+        // Use server order exactly - no client-side shuffling
+        // Both players must see identical cards!
+        cardSymbolIds.forEach((symbolName, i) => {
+            const symbolImg = SYMBOLS[symbolName];
+            if (!symbolImg) return; // Safety check
 
-                const symContainer = document.createElement('div');
-                symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
-                symContainer.dataset.symbolId = symbolName;
+            const symContainer = document.createElement('img');
+            symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
+            symContainer.src = symbolImg;
+            symContainer.alt = symbolName;
+            symContainer.draggable = false;
+            symContainer.dataset.symbolId = symbolName;
 
-                const img = document.createElement('img');
-                img.src = symbolImg;
-                img.alt = symbolName;
-                img.draggable = false;
-                img.className = 'symbol-12-img';
-                symContainer.appendChild(img);
+            // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
+            // Only enable clicks if NOT in spectator mode
+            if (!isSpectator) {
+                symContainer.onpointerdown = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
 
-                if (!isSpectator) {
-                    symContainer.onpointerdown = (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
+                    // Visual feedback - use class to preserve rotation
+                    symContainer.classList.add('symbol-clicked');
+                    setTimeout(() => symContainer.classList.remove('symbol-clicked'), 200);
 
-                        img.classList.add('symbol-clicked');
-                        setTimeout(() => img.classList.remove('symbol-clicked'), 200);
+                    // Add green highlight to all cards
+                    document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
-                        document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
+                    // Vibrate all matching symbols across all cards
+                    document.querySelectorAll(`[data-symbol-id="${symbolName}"]`).forEach(sprite => {
+                        sprite.classList.add('symbol-match');
+                        setTimeout(() => sprite.classList.remove('symbol-match'), 500);
+                    });
 
-                        document.querySelectorAll(`[data-symbol-id="${symbolName}"] .symbol-12-img`).forEach(sprite => {
-                            sprite.classList.add('symbol-match');
-                            setTimeout(() => sprite.classList.remove('symbol-match'), 500);
-                        });
+                    // Send Guess (server will handle correct/wrong)
+                    console.log("Clicking symbol:", symbolName, "on card:", cardIndex);
+                    safeSend({
+                        type: "GUESS",
+                        symbol: symbolName,
+                        cardIndex: cardIndex,
+                        sessionToken: sessionToken
+                    });
+                };
+            }
 
-                        console.log("Clicking symbol:", symbolName, "on card:", cardIndex);
-                        safeSend({
-                            type: "GUESS",
-                            symbol: symbolName,
-                            cardIndex: cardIndex,
-                            sessionToken: sessionToken
-                        });
-                    };
-                }
+            symbolsContainer.appendChild(symContainer);
+        });
 
-                symbolsContainer.appendChild(symContainer);
-            });
-
-            cardEl.appendChild(symbolsContainer);
-        } else {
-            // Level 1: 7-symbol layout
-            cardSymbolIds.forEach((symbolName, i) => {
-                const symbolImg = SYMBOLS[symbolName];
-                if (!symbolImg) return;
-
-                const symContainer = document.createElement('div');
-                symContainer.className = `symbol-container pos-${i}`;
-                symContainer.dataset.symbolId = symbolName;
-                symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS_7[i]}deg)`;
-
-                symContainer.innerHTML = `
-                    <img class="game-symbol" src="${symbolImg}" alt="" draggable="false">
-                `;
-
-                if (!isSpectator) {
-                    symContainer.onpointerdown = (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-
-                        const spriteElement = symContainer.querySelector('img');
-                        spriteElement.style.transform = 'scale(1.5)';
-                        setTimeout(() => spriteElement.style.transform = '', 200);
-
-                        document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
-
-                        document.querySelectorAll(`.symbol-container[data-symbol-id="${symbolName}"] img`).forEach(sprite => {
-                            sprite.classList.add('symbol-match');
-                            setTimeout(() => sprite.classList.remove('symbol-match'), 500);
-                        });
-
-                        console.log("Clicking symbol:", symbolName, "on card:", cardIndex);
-                        safeSend({
-                            type: "GUESS",
-                            symbol: symbolName,
-                            cardIndex: cardIndex,
-                            sessionToken: sessionToken
-                        });
-                    };
-                }
-
-                cardEl.appendChild(symContainer);
-            });
-
-            // Add small Møbee logo sticker to each card (level 1 only)
-            const stickerSize = 10;
-            const sticker = document.createElement('div');
-            sticker.className = 'card-symbol-sticker';
-            sticker.innerHTML = `
-                <div style="
-                    width: ${stickerSize}px;
-                    height: ${stickerSize}px;
-                    background-image: url('assets/mobee_logo_sm.png');
-                    background-size: contain;
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    border-radius: 50%;
-                    background-color: white;
-                    filter: grayscale(100%) opacity(0.2);
-                "></div>
-            `;
-            cardEl.appendChild(sticker);
-        }
-
+        cardEl.appendChild(symbolsContainer);
         boardEl.appendChild(cardEl);
     });
 
@@ -1278,8 +1190,6 @@ function handleWinner(data) {
     // data.winnerId = playerId of the winner
     // data.winningSymbol = the correct symbol name
     // data.scores = updated scores
-    // data.levelChanged = true if player leveled up/down
-    // data.newLevel = new level if changed
 
     // Pause timer FIRST before updating scoreboard
     pauseTimer();
@@ -1290,15 +1200,9 @@ function handleWinner(data) {
 
     const winnerAvatar = getAvatarHTML(data.avatars[data.winnerId]);
 
-    // Animate the winning symbol on all cards for all players (both 7 and 12 symbol cards)
+    // Animate the winning symbol on all cards for all players
     if (data.winningSymbol !== undefined) {
-        // Level 1 (7-symbol) selector
-        document.querySelectorAll(`.symbol-container[data-symbol-id="${data.winningSymbol}"] img`).forEach(sprite => {
-            sprite.classList.add('symbol-match');
-            setTimeout(() => sprite.classList.remove('symbol-match'), 500);
-        });
-        // Level 2 (12-symbol) selector
-        document.querySelectorAll(`[data-symbol-id="${data.winningSymbol}"] .symbol-12-img`).forEach(sprite => {
+        document.querySelectorAll(`.symbol-container[data-symbol-id="${data.winningSymbol}"] img, .symbol-container[data-symbol-id="${data.winningSymbol}"] .symbol-sprite`).forEach(sprite => {
             sprite.classList.add('symbol-match');
             setTimeout(() => sprite.classList.remove('symbol-match'), 500);
         });
@@ -1308,36 +1212,11 @@ function handleWinner(data) {
     const playerCount = Object.keys(data.scores).length;
     const isSinglePlayer = playerCount === 1;
 
-    // Handle level change notification in single player
-    if (isSinglePlayer && data.levelChanged && data.newLevel) {
-        currentGameLevel = data.newLevel;
-        // Show brief level change message
-        if (data.newLevel === 2) {
-            msgTitle.innerHTML = `Level Up!`;
-            msgBody.innerHTML = `<p>Advanced to 12-symbol cards!</p>`;
-        } else {
-            msgTitle.innerHTML = `Level Down`;
-            msgBody.innerHTML = `<p>Back to 7-symbol cards</p>`;
-        }
-        msgEl.classList.remove('lost');
-        msgEl.style.display = 'block';
-        setTimeout(() => {
-            msgEl.style.display = 'none';
-        }, 1500);
-    }
-
     // In single player mode, skip all messages and just show brief card animation
-    if (isSinglePlayer && !data.levelChanged) {
+    if (isSinglePlayer) {
         // Arm watchdog in case NEW_ROUND doesn't arrive
         armNextRoundWatchdog("WINNER(single)");
         // Resume timer immediately
-        setTimeout(() => {
-            if (gameStartTime) resumeTimer();
-        }, 10);
-        return;
-    } else if (isSinglePlayer && data.levelChanged) {
-        // Level changed - arm watchdog after message displays
-        armNextRoundWatchdog("WINNER(single-levelup)");
         setTimeout(() => {
             if (gameStartTime) resumeTimer();
         }, 10);
@@ -1389,8 +1268,6 @@ function handleWinner(data) {
 function handleWrongGuess(data) {
     // data.guesserId = playerId who guessed wrong
     // data.scores = updated scores
-    // data.levelChanged = true if player leveled down
-    // data.newLevel = new level if changed
 
     // Pause timer FIRST before updating scoreboard
     pauseTimer();
@@ -1402,26 +1279,6 @@ function handleWrongGuess(data) {
     // Check if single player mode (only 1 player)
     const playerCount = Object.keys(data.scores).length;
     const isSinglePlayer = playerCount === 1;
-
-    // Handle level change notification in single player (level down on wrong guess)
-    if (isSinglePlayer && data.levelChanged && data.newLevel) {
-        currentGameLevel = data.newLevel;
-        // Show level down message
-        cards.forEach(c => c.classList.add('wrong'));
-        msgTitle.innerHTML = `Level Down`;
-        msgBody.innerHTML = `<p>Back to 7-symbol cards</p>`;
-        msgEl.classList.add('lost');
-        msgEl.style.display = 'block';
-        setTimeout(() => {
-            msgEl.style.display = 'none';
-        }, 1500);
-        // Arm watchdog
-        armNextRoundWatchdog("WRONG_GUESS(single-leveldown)");
-        setTimeout(() => {
-            if (gameStartTime) resumeTimer();
-        }, 10);
-        return;
-    }
 
     // In single player mode, skip all messages and just show brief card animation
     if (isSinglePlayer) {

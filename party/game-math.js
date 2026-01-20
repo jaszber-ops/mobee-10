@@ -1,16 +1,16 @@
-// party/game-math.js
+/**
+ * Møbee Multi - Card Deck Generation
+ *
+ * Generates decks of cards where any two cards share exactly one common symbol.
+ * Uses projective plane mathematics for Level 1 (7 symbols per card).
+ * Uses a pre-defined validated deck for Level 2 (12 symbols per card).
+ */
 
-// Fisher-Yates shuffle
-function shuffle(array) {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
-// All 30 available symbols
+// All 30 available symbols in the game
 const ALL_SYMBOLS = [
   'dog', 'pigeon', 'mobius', 'leaf', 'cat', 'doll', 'elephant', 'cherry',
   'star', 'fan', 'lion', 'airplane', 'ufo', 'train', 'rhino', 'saturn',
@@ -18,61 +18,9 @@ const ALL_SYMBOLS = [
   'pawprint', 'sunglasses', 'coffee', 'sailboat', 'frenchhorn', 'flower', 'hourglass'
 ];
 
-// Level 1: 7-symbol cards (8 cards in deck)
-// Uses projective plane math to generate cards where any 2 share exactly 1 symbol
-export function generateLevel1Deck() {
-  // Pick 14 random symbols from the 30 available
-  const shuffledSymbols = shuffle(ALL_SYMBOLS);
-  const selectedSymbols = shuffledSymbols.slice(0, 14);
-
-  // Define the 8 Cards (Vectors [x,y,z] from 000 to 111)
-  const cards = [];
-  for (let i = 0; i < 8; i++) {
-    cards.push({
-      id: i,
-      vector: [ (i >> 2) & 1, (i >> 1) & 1, i & 1 ],
-      symbols: []
-    });
-  }
-
-  // Define the 7 Coefficients (The "Slope" Vectors)
-  const coeffs = [
-    [0,0,1], [0,1,0], [0,1,1],
-    [1,0,0], [1,0,1], [1,1,0], [1,1,1]
-  ];
-
-  // Apply the Affine Geometry Formula
-  // (a*x + b*y + c*z) % 2 === d
-  let symbolIdCounter = 0;
-
-  coeffs.forEach(([a, b, c]) => {
-    [0, 1].forEach(d => {
-      const currentSymbolId = symbolIdCounter++; // 0 to 13
-
-      cards.forEach(card => {
-        const [x, y, z] = card.vector;
-        const dotProduct = (a*x + b*y + c*z) % 2;
-
-        if (dotProduct === d) {
-          // Use the symbol name instead of index
-          card.symbols.push(selectedSymbols[currentSymbolId]);
-        }
-      });
-    });
-  });
-
-  // Return the cards with symbol names
-  return {
-    cards: cards.map(c => c.symbols),
-    symbolSet: selectedSymbols,
-    level: 1,
-    symbolsPerCard: 7
-  };
-}
-
-// Level 2: 12-symbol cards (10 cards in deck)
-// Pre-defined deck where any 2 cards share exactly 1 symbol
-const LEVEL2_CARDS = [
+// Pre-defined Level 2 deck (12 symbols per card, 10 cards)
+// Any 2 cards share exactly 1 symbol
+const LEVEL2_DECK = [
   ['pawprint', 'shoe', 'airplane', 'star', 'coffee', 'lightbulb', 'rhino', 'train', 'sunglasses', 'hourglass', 'sailboat', 'shark'],
   ['shoe', 'saturn', 'pawprint', 'snowflake', 'fan', 'airplane', 'lion', 'dog', 'doll', 'helicopter', 'lightbulb', 'mobius'],
   ['mobius', 'snowflake', 'doll', 'shoe', 'sunglasses', 'globe', 'cherry', 'elephant', 'hourglass', 'train', 'frenchhorn', 'pig'],
@@ -85,23 +33,99 @@ const LEVEL2_CARDS = [
   ['star', 'dog', 'shoe', 'saturn', 'helicopter', 'cherry', 'elephant', 'rhino', 'leaf', 'coffee', 'flower', 'globe']
 ];
 
-export function generateLevel2Deck() {
-  // Shuffle the deck order and shuffle symbols within each card
-  const shuffledDeck = shuffle(LEVEL2_CARDS);
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
 
-  // Return cards with shuffled symbol order within each card
+/**
+ * Fisher-Yates shuffle for unbiased random array ordering
+ */
+function shuffle(array) {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+// =============================================================================
+// DECK GENERATION
+// =============================================================================
+
+/**
+ * Generate Level 1 deck: 8 cards with 7 symbols each
+ *
+ * Uses affine plane geometry over GF(2) (binary field):
+ * - 8 cards represented as 3-bit vectors (000 to 111)
+ * - 7 "slopes" determine symbol assignments
+ * - Each slope generates 2 symbols (one for each parity)
+ * - Result: 14 unique symbols, 7 per card
+ * - Any 2 cards share exactly 1 symbol
+ */
+export function generateLevel1Deck() {
+  // Select 14 random symbols from available pool
+  const symbols = shuffle(ALL_SYMBOLS).slice(0, 14);
+
+  // Create 8 cards with 3-bit vector identifiers
+  const cards = Array.from({ length: 8 }, (_, i) => ({
+    vector: [(i >> 2) & 1, (i >> 1) & 1, i & 1],
+    symbols: []
+  }));
+
+  // The 7 non-zero coefficient vectors ("slopes")
+  const coefficients = [
+    [0, 0, 1], [0, 1, 0], [0, 1, 1],
+    [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]
+  ];
+
+  // Assign symbols using affine geometry formula
+  // Card gets symbol if: (a*x + b*y + c*z) mod 2 === d
+  let symbolIndex = 0;
+
+  for (const [a, b, c] of coefficients) {
+    for (const parity of [0, 1]) {
+      const symbol = symbols[symbolIndex++];
+
+      for (const card of cards) {
+        const [x, y, z] = card.vector;
+        const dotProduct = (a * x + b * y + c * z) % 2;
+
+        if (dotProduct === parity) {
+          card.symbols.push(symbol);
+        }
+      }
+    }
+  }
+
+  return {
+    cards: cards.map(c => c.symbols),
+    symbolSet: symbols,
+    level: 1,
+    symbolsPerCard: 7
+  };
+}
+
+/**
+ * Generate Level 2 deck: 10 cards with 12 symbols each
+ *
+ * Uses a pre-validated deck where any 2 cards share exactly 1 symbol.
+ * Deck and symbol order are shuffled for variety.
+ */
+export function generateLevel2Deck() {
+  const shuffledDeck = shuffle(LEVEL2_DECK);
+
   return {
     cards: shuffledDeck.map(card => shuffle(card)),
-    symbolSet: [...new Set(LEVEL2_CARDS.flat())],
+    symbolSet: [...new Set(LEVEL2_DECK.flat())],
     level: 2,
     symbolsPerCard: 12
   };
 }
 
-// Default export for backwards compatibility - generates level 1
+/**
+ * Generate a deck for the specified level
+ */
 export function generateDeck(level = 1) {
-  if (level === 2) {
-    return generateLevel2Deck();
-  }
-  return generateLevel1Deck();
+  return level === 2 ? generateLevel2Deck() : generateLevel1Deck();
 }
