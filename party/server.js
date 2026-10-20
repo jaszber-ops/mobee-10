@@ -23,6 +23,11 @@ const GUESS_RATE_LIMIT_MS = 150;  // Minimum ms between guesses
 const SINGLE_PLAYER_DELAY = 300;  // Delay between rounds (single player)
 const MULTI_PLAYER_DELAY = 4000;  // Delay between rounds (multiplayer)
 
+const ASSET_ORIGIN = "https://mobee-10.trippplecard.games"; // where the symbol PNGs live
+const pngCache = new Map();                                    // symbol name → Promise<ArrayBuffer>
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
+const crc32 = bytes => { let c = 0xffffffff; for (const b of bytes) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+
 // Deck positions for cycling through unique 3-card combinations
 const DECK_POSITIONS = {
   1: [0, 3, 6, 1, 4, 7, 2, 5],           // Level 1: 8 cards
@@ -190,15 +195,21 @@ export default class MobeeServer {
     const answer = cards[0].find(s => cards[1].includes(s) && cards[2].includes(s));
     console.log("Answer:", answer);
 
+    // Anti-cheat: the client only ever sees opaque per-round, per-slot tokens, never symbol names.
+    // The same symbol gets a different token on each card, so the answer can't be found by set intersection.
+    const tokens = {};
+    const tokenCards = cards.map(card => card.map(sym => { const t = crypto.randomUUID().slice(0, 8); tokens[t] = sym; return t; }));
+
     // Update state
     state.currentDeckIndices = indices;
     state.currentAnswer = answer;
     state.currentShuffledCards = cards;
+    state.roundTokens = tokens;
     state.status = "playing";
 
     // Broadcast new round
     this.party.broadcast(createPayload("NEW_ROUND", state, {
-      cards,
+      cards: tokenCards,
       level,
       gameStartTime: state.gameStartTime
     }));
@@ -341,6 +352,29 @@ export default class MobeeServer {
   // ---------------------------------------------------------------------------
   // CONNECTION HANDLERS
   // ---------------------------------------------------------------------------
+
+  /**
+   * GET .../s/<token> → the PNG for that token in the current round (never the symbol name).
+   * A random-length tEXt chunk is added so the file size doesn't fingerprint the symbol either.
+   */
+  async onRequest(req) {
+    const token = new URL(req.url).pathname.match(/\/s\/([a-f0-9]{8})$/)?.[1];
+    const state = token && await this.party.storage.get("gamestate");
+    const name = state?.roundTokens?.[token];
+    if (!name) return new Response("not found", { status: 404 });
+    if (!pngCache.has(name)) pngCache.set(name, fetch(`${ASSET_ORIGIN}/assets/symbols/${name}.png`).then(r => r.arrayBuffer()));
+    const png = new Uint8Array(await pngCache.get(name));
+    const pad = crypto.getRandomValues(new Uint8Array(5 + Math.floor(Math.random() * 4000)));
+    const body = new Uint8Array(png.length + pad.length + 12);
+    const len = png.length - 12; // IEND is the last 12 bytes; splice the padding chunk before it
+    body.set(png.subarray(0, len));
+    new DataView(body.buffer).setUint32(len, pad.length);
+    body.set([0x74, 0x45, 0x58, 0x74], len + 4); // "tEXt"
+    body.set(pad, len + 8);
+    new DataView(body.buffer).setUint32(len + 8 + pad.length, crc32(body.subarray(len + 4, len + 8 + pad.length)));
+    body.set(png.subarray(len), len + 12 + pad.length);
+    return new Response(body, { headers: { "Content-Type": "image/png", "Cache-Control": "no-store" } });
+  }
 
   async onConnect(conn) {
     // Extract player ID from query params or use connection ID
@@ -642,10 +676,11 @@ export default class MobeeServer {
     }
 
     const guesser = sender.playerId;
-    const isCorrect = data.symbol === state.currentAnswer;
+    const guessedSymbol = state.roundTokens?.[data.token];
+    const isCorrect = guessedSymbol !== undefined && guessedSymbol === state.currentAnswer;
     const delay = isSinglePlayer ? SINGLE_PLAYER_DELAY : MULTI_PLAYER_DELAY;
 
-    console.log(`${guesser} guessed ${data.symbol} | Answer: ${state.currentAnswer} | ${isCorrect ? 'CORRECT' : 'WRONG'}`);
+    console.log(`${guesser} guessed ${guessedSymbol} (${data.token}) | Answer: ${state.currentAnswer} | ${isCorrect ? 'CORRECT' : 'WRONG'}`);
 
     state.status = "waiting";
 
@@ -664,7 +699,7 @@ export default class MobeeServer {
 
       this.party.broadcast(createPayload("WINNER", state, {
         winnerId: guesser,
-        winningSymbol: state.currentAnswer
+        winningTokens: Object.keys(state.roundTokens).filter(t => state.roundTokens[t] === state.currentAnswer)
       }));
     } else {
       // Wrong answer - decrease score if positive

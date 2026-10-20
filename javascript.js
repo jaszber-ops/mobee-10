@@ -232,6 +232,8 @@ const savedPartyKitHost = localStorage.getItem('mobee_partykit_host');
 const PARTYKIT_HOST = partykitOverride
     || (isLocalHost ? (savedPartyKitHost || "127.0.0.1:1999") : "mobee-multi.jaszber-ops.partykit.dev");
 let roomCode = urlParams.get('room');
+// Symbol images are served by the game server under the round token: /s/<token>
+const symbolUrl = token => `${isLocalHost ? 'http' : 'https'}://${PARTYKIT_HOST}/parties/main/${encodeURIComponent(roomCode)}/s/${token}`;
 let conn = null;
 
 // Check if user clicked logo to go to preview (?preview parameter)
@@ -1093,13 +1095,6 @@ setTimeout(scaleGameBoard, 100);
 function renderBoard(serverCards, isSpectator = false) {
     console.log("renderBoard called with:", serverCards, "spectator:", isSpectator);
 
-    // Find and log the common symbol
-    const c1 = serverCards[0];
-    const c2 = serverCards[1];
-    const c3 = serverCards[2];
-    const commonSymbol = c1.find(s => c2.includes(s) && c3.includes(s));
-    console.log("Common symbol across all cards:", commonSymbol);
-
     boardEl.innerHTML = '';
 
     serverCards.forEach((cardSymbolIds, cardIndex) => {
@@ -1133,16 +1128,14 @@ function renderBoard(serverCards, isSpectator = false) {
 
         // Use server order exactly - no client-side shuffling
         // Both players must see identical cards!
-        cardSymbolIds.forEach((symbolName, i) => {
-            const symbolImg = SYMBOLS[symbolName];
-            if (!symbolImg) return; // Safety check
-
+        // Server sends opaque per-round tokens, never symbol names; the image is fetched by token too.
+        cardSymbolIds.forEach((token, i) => {
             const symContainer = document.createElement('img');
             symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
-            symContainer.src = symbolImg;
-            symContainer.alt = symbolName;
+            symContainer.src = symbolUrl(token);
+            symContainer.alt = '';
             symContainer.draggable = false;
-            symContainer.dataset.symbolId = symbolName;
+            symContainer.dataset.token = token;
 
             // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
             // Only enable clicks if NOT in spectator mode
@@ -1158,17 +1151,10 @@ function renderBoard(serverCards, isSpectator = false) {
                     // Add green highlight to all cards
                     document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
 
-                    // Vibrate all matching symbols across all cards
-                    document.querySelectorAll(`[data-symbol-id="${symbolName}"]`).forEach(sprite => {
-                        sprite.classList.add('symbol-match');
-                        setTimeout(() => sprite.classList.remove('symbol-match'), 500);
-                    });
-
                     // Send Guess (server will handle correct/wrong)
-                    console.log("Clicking symbol:", symbolName, "on card:", cardIndex);
                     safeSend({
                         type: "GUESS",
-                        symbol: symbolName,
+                        token,
                         cardIndex: cardIndex,
                         sessionToken: sessionToken
                     });
@@ -1188,7 +1174,7 @@ function renderBoard(serverCards, isSpectator = false) {
 
 function handleWinner(data) {
     // data.winnerId = playerId of the winner
-    // data.winningSymbol = the correct symbol name
+    // data.winningTokens = the correct symbol's tokens (one per card)
     // data.scores = updated scores
 
     // Pause timer FIRST before updating scoreboard
@@ -1201,8 +1187,8 @@ function handleWinner(data) {
     const winnerAvatar = getAvatarHTML(data.avatars[data.winnerId]);
 
     // Animate the winning symbol on all cards for all players
-    if (data.winningSymbol !== undefined) {
-        document.querySelectorAll(`.symbol-container[data-symbol-id="${data.winningSymbol}"] img, .symbol-container[data-symbol-id="${data.winningSymbol}"] .symbol-sprite`).forEach(sprite => {
+    if (data.winningTokens) {
+        document.querySelectorAll(data.winningTokens.map(t => `[data-token="${t}"]`).join(',')).forEach(sprite => {
             sprite.classList.add('symbol-match');
             setTimeout(() => sprite.classList.remove('symbol-match'), 500);
         });
