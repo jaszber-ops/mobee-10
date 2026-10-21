@@ -547,7 +547,6 @@ function renderPreviewCards() {
                     <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
                 </svg>
                 <div class="card-12-symbols">
-                    <img src="assets/mobee_logo_sm.png" class="center-logo" alt="Møbee" draggable="false">
                     ${symbolsHtml}
                 </div>
             </div>
@@ -1155,16 +1154,9 @@ function renderBoard(serverCards, isSpectator = false) {
             sticker.innerHTML = `<div style="width:10px;height:10px;background:url('assets/mobee_logo_sm.png') center/contain no-repeat white;border-radius:50%;filter:grayscale(100%) opacity(0.2)"></div>`;
             cardEl.appendChild(sticker);
         } else {
-            // Level 2: 12-symbol layout (inner/outer rings around the centre logo)
+            // Level 2: 12-symbol layout (inner and outer rings)
             const symbolsContainer = document.createElement('div');
             symbolsContainer.className = 'card-12-symbols';
-
-            const centerLogo = document.createElement('img');
-            centerLogo.src = 'assets/mobee_logo_sm.png';
-            centerLogo.className = 'center-logo';
-            centerLogo.alt = 'Møbee';
-            centerLogo.draggable = false;
-            symbolsContainer.appendChild(centerLogo);
 
             cardSymbolIds.forEach((token, i) => {
                 const symContainer = document.createElement('img');
