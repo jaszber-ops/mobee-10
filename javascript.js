@@ -1061,6 +1061,8 @@ conn.addEventListener("message", (event) => {
 // serverCards is: [[symbol1, symbol2, ...], ...]
 // 12-symbol card positions (matching SYMBOL_POSITIONS_12)
 const ROTATIONS_12 = [180, 180, -135, -90, -90, -45, 0, 0, 45, 90, 90, 135];
+// 7-symbol card rotations (centre, then the ring clockwise from the top)
+const ROTATIONS_7 = [0, 180, -120, -60, 0, 60, 120];
 
 // Scale the game board to fit available space
 const BASE_BOARD_SIZE = 600; // Fixed base size in pixels
@@ -1113,58 +1115,78 @@ function renderBoard(serverCards, isSpectator = false) {
         svgBg.innerHTML = `<path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />`;
         cardEl.appendChild(svgBg);
 
-        // Create 12-symbol container
-        const symbolsContainer = document.createElement('div');
-        symbolsContainer.className = 'card-12-symbols';
-
-        // Add center logo
-        const centerLogo = document.createElement('img');
-        centerLogo.src = 'assets/mobee_logo_sm.png';
-        centerLogo.className = 'center-logo';
-        centerLogo.alt = 'Møbee';
-        centerLogo.draggable = false;
-        symbolsContainer.appendChild(centerLogo);
-
         // Use server order exactly - no client-side shuffling
         // Both players must see identical cards!
         // Server sends opaque per-round tokens, never symbol names; the image is fetched by token too.
-        cardSymbolIds.forEach((token, i) => {
-            const symContainer = document.createElement('img');
-            symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
-            symContainer.src = symbolUrl(token);
-            symContainer.alt = '';
-            symContainer.draggable = false;
-            symContainer.dataset.token = token;
+        const sendGuess = (token) => {
+            if (Date.now() < guessLockedUntil) return;
+            // Add green highlight to all cards
+            document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
+            // Send Guess (server will handle correct/wrong)
+            safeSend({ type: "GUESS", token, cardIndex: cardIndex, sessionToken: sessionToken });
+        };
 
-            // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
-            // Only enable clicks if NOT in spectator mode
-            if (!isSpectator) {
-                symContainer.onpointerdown = (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (Date.now() < guessLockedUntil) return;
+        if (cardSymbolIds.length <= 7) {
+            // Level 1: 7-symbol layout (centre + hexagon ring), see .pos-0 … .pos-6 in style.css
+            cardSymbolIds.forEach((token, i) => {
+                const symContainer = document.createElement('div');
+                symContainer.className = `symbol-container pos-${i}`;
+                symContainer.dataset.token = token;
+                symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS_7[i]}deg)`;
+                const img = document.createElement('img');
+                img.className = 'game-symbol';
+                img.src = symbolUrl(token);
+                img.alt = '';
+                img.draggable = false;
+                symContainer.appendChild(img);
+                if (!isSpectator) {
+                    symContainer.onpointerdown = (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        img.style.transform = 'scale(1.5)';
+                        setTimeout(() => img.style.transform = '', 200);
+                        sendGuess(token);
+                    };
+                }
+                cardEl.appendChild(symContainer);
+            });
+            const sticker = document.createElement('div');
+            sticker.className = 'card-symbol-sticker';
+            sticker.innerHTML = `<div style="width:10px;height:10px;background:url('assets/mobee_logo_sm.png') center/contain no-repeat white;border-radius:50%;filter:grayscale(100%) opacity(0.2)"></div>`;
+            cardEl.appendChild(sticker);
+        } else {
+            // Level 2: 12-symbol layout (inner/outer rings around the centre logo)
+            const symbolsContainer = document.createElement('div');
+            symbolsContainer.className = 'card-12-symbols';
 
-                    // Visual feedback - use class to preserve rotation
-                    symContainer.classList.add('symbol-clicked');
-                    setTimeout(() => symContainer.classList.remove('symbol-clicked'), 200);
+            const centerLogo = document.createElement('img');
+            centerLogo.src = 'assets/mobee_logo_sm.png';
+            centerLogo.className = 'center-logo';
+            centerLogo.alt = 'Møbee';
+            centerLogo.draggable = false;
+            symbolsContainer.appendChild(centerLogo);
 
-                    // Add green highlight to all cards
-                    document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
-
-                    // Send Guess (server will handle correct/wrong)
-                    safeSend({
-                        type: "GUESS",
-                        token,
-                        cardIndex: cardIndex,
-                        sessionToken: sessionToken
-                    });
-                };
-            }
-
-            symbolsContainer.appendChild(symContainer);
-        });
-
-        cardEl.appendChild(symbolsContainer);
+            cardSymbolIds.forEach((token, i) => {
+                const symContainer = document.createElement('img');
+                symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
+                symContainer.src = symbolUrl(token);
+                symContainer.alt = '';
+                symContainer.draggable = false;
+                symContainer.dataset.token = token;
+                if (!isSpectator) {
+                    symContainer.onpointerdown = (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        // Visual feedback - use class to preserve rotation
+                        symContainer.classList.add('symbol-clicked');
+                        setTimeout(() => symContainer.classList.remove('symbol-clicked'), 200);
+                        sendGuess(token);
+                    };
+                }
+                symbolsContainer.appendChild(symContainer);
+            });
+            cardEl.appendChild(symbolsContainer);
+        }
         boardEl.appendChild(cardEl);
     });
 

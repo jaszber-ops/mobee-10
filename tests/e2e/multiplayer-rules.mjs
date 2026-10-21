@@ -15,7 +15,7 @@ async function tap(ctx) { // record every server message per context
 const last = (m, t) => { for (let i = m.length - 1; i >= 0; i--) if (m[i].type === t) return m[i]; };
 const count = (m, t) => m.filter(x => x.type === t).length;
 async function answerToken(page) {
-  const toks = await page.$$eval('#game-board [data-token]', els => els.map(e => [e.dataset.token, e.src, [...document.querySelectorAll('#game-board .card')].indexOf(e.closest('.card'))]));
+  const toks = await page.$$eval('#game-board [data-token]', els => els.map(e => [e.dataset.token, e.src || e.querySelector('img')?.src, [...document.querySelectorAll('#game-board .card')].indexOf(e.closest('.card'))]));
   const h = {};
   for (const [t, src, ci] of toks) {
     const buf = Buffer.from(await (await page.request.get(src)).body());
