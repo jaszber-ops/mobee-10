@@ -1494,3 +1494,131 @@ body.in-room #lobby {
     .room-tile { width: 40px; height: 45px; font-size: 1.25rem; }
     .room-seat-hex { width: 52px; height: 59px; }
 }
+
+/* =============================================================================
+   In-game HUD (Oct 2026): seats like the room, fixed order, ring timer
+   ============================================================================= */
+#score-el.hud {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    width: min(100vw - 24px, 520px);
+    margin: 0 auto;
+    font-size: 1rem;
+}
+.hud-seats { display: flex; gap: 10px; justify-content: center; flex: 1; min-width: 0; }
+.hud-seat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 44px; }
+.hud-hex {
+    position: relative;
+    width: 42px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    background: var(--mb-line, #dde3ea);
+    isolation: isolate;
+    transition: background .2s;
+}
+.hud-hex::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    clip-path: inherit;
+    background: #fff;
+    z-index: -1;
+}
+.hud-hex .avatar-sprite { border: 0; margin: 0 !important; }
+.hud-seat.is-me .hud-hex { background: var(--mb-yellow, #F9CE79); }
+.hud-seat.is-leader .hud-hex { background: var(--mb-green, #BEC887); }
+.hud-seat.is-me.is-leader .hud-hex { background: linear-gradient(135deg, #F9CE79 50%, #BEC887 50%); }
+.hud-seat.is-leader::after {
+    content: "";
+    position: absolute;
+    top: -7px;
+    left: 50%;
+    width: 12px;
+    height: 7px;
+    transform: translateX(-50%);
+    background: var(--mb-green, #BEC887);
+    clip-path: polygon(0 100%, 0 30%, 25% 70%, 50% 0, 75% 70%, 100% 30%, 100% 100%);
+}
+.hud-seat.is-away { opacity: .4; }
+.hud-score {
+    position: relative;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--mb-ink, #2e2c33);
+}
+.hud-label { font-size: 0.68rem; color: var(--mb-ink-soft, #6b6873); line-height: 1; }
+.hud-seat.is-me .hud-label { color: var(--mb-ink, #2e2c33); font-weight: 600; }
+
+.hud-delta {
+    position: absolute;
+    left: 100%;
+    top: -2px;
+    margin-left: 3px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    opacity: 0;
+}
+.hud-seat.did-score .hud-delta { color: #7d8a35; }
+.hud-seat.did-miss .hud-delta { color: #d27752; }
+@media (prefers-reduced-motion: no-preference) {
+    .hud-seat.did-score .hud-delta,
+    .hud-seat.did-miss .hud-delta { animation: hudDelta 1.1s ease-out both; }
+    .hud-seat.did-score .hud-hex { animation: hudPop .45s cubic-bezier(.3,1.6,.5,1); }
+    .hud-seat.did-miss .hud-hex { animation: shake .4s; }
+    .hud-seat.is-winner .hud-hex { animation: hudPop .45s cubic-bezier(.3,1.6,.5,1) 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .hud-seat.did-score .hud-delta, .hud-seat.did-miss .hud-delta { opacity: 1; }
+}
+@keyframes hudDelta { 0% { opacity: 0; transform: translateY(4px); } 20% { opacity: 1; transform: translateY(0); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+@keyframes hudPop { 0%,100% { transform: scale(1); } 45% { transform: scale(1.15); } }
+
+.hud-timer { position: relative; width: 56px; height: 56px; flex: none; display: grid; place-items: center; }
+.hud-timer svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.hud-ring-bg { fill: #fff; stroke: var(--mb-line, #dde3ea); stroke-width: 4; }
+.hud-ring { fill: none; stroke: var(--mb-green, #BEC887); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .25s linear, stroke .2s; }
+.hud-timer .timer-number { position: relative; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--mb-ink, #2e2c33); }
+.hud-timer.is-urgent .hud-ring { stroke: var(--mb-red, #E6A07F); }
+.hud-timer.is-urgent .timer-number { color: #c9663f; }
+
+/* Round result banner: sits over the top edge of the board, cards stay visible */
+/* The banner has its own strip between the scores and the board (where the hint line sits
+   before a game), so it never covers a card and the board doesn't move when it appears. */
+body.playing #lobby-top-hint { display: none; }
+#round-banner-slot { display: none; }
+body.playing #round-banner-slot {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 48px;
+    flex-shrink: 0;
+}
+#round-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 6px 10px 6px 6px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(46, 44, 51, .10);
+    border: 2px solid var(--mb-line, #dde3ea);
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+#round-banner[hidden] { display: none; }
+#round-banner.is-good { border-color: var(--mb-green, #BEC887); }
+#round-banner.is-other { border-color: var(--mb-red, #E6A07F); }
+#round-banner .rb-who { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+#round-banner .rb-who .avatar-sprite { margin: 0 !important; }
+#round-banner .rb-next { color: var(--mb-ink-soft, #6b6873); padding-right: 6px; }
+#round-banner .rb-next b { color: var(--mb-ink, #2e2c33); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) {
+    #round-banner:not([hidden]) { animation: bannerIn .25s ease-out; }
+}
+@keyframes bannerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }

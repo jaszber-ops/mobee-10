@@ -833,6 +833,9 @@ function updateTimerDisplay(seconds) {
     if (timerNumber) {
         timerNumber.textContent = seconds;
     }
+    const ring = scoreEl.querySelector('.hud-ring');
+    if (ring) ring.style.strokeDashoffset = RING_C * (1 - seconds / GAME_DURATION);
+    scoreEl.querySelector('.hud-timer')?.classList.toggle('is-urgent', seconds <= 10);
 }
 
 function endGame() {
@@ -956,6 +959,7 @@ conn.addEventListener("message", (event) => {
             // Hide any modal and start playing immediately
             // (GAME_STARTING already handled the countdown for multiplayer)
             msgEl.style.display = 'none';
+            hideRoundBanner();
             document.body.classList.add("playing");
             renderBoard(data.cards);
 
@@ -1000,6 +1004,8 @@ conn.addEventListener("message", (event) => {
         case "GAME_OVER":
             // The server's clock decides; clients drift by a second or two after round pauses
             disarmNextRoundWatchdog();
+            hideRoundBanner();
+            hudPrevScores = {};
             if (gameTimerInterval) clearInterval(gameTimerInterval);
             pauseStartTime = null;
             updateScoreboard(data.scores, data.avatars); // keeps final scores on the board
@@ -1228,46 +1234,46 @@ function handleWinner(data) {
         return;
     }
 
-    // Multiplayer mode - show winner message WITH countdown
+    // Multiplayer: the winning symbol pulses on every card and the winner's seat flashes;
+    // a small banner over the top of the board names the winner and counts down.
     const isWinner = data.winnerId === playerId;
+    if (!isWinner) cards.forEach(c => c.classList.add('wrong'));
+    scoreEl.querySelector(`.hud-seat[data-player="${data.winnerId}"]`)?.classList.add('is-winner');
+    showRoundBanner(isWinner ? `${winnerAvatar}<span>You got it</span>` : `${winnerAvatar}<span>${data.winnerId === currentHostId ? 'Host' : 'Player'} got it</span>`, isWinner);
+}
 
-    if (isWinner) {
-        // I WON! - cards already have 'correct' class from click
-        msgTitle.innerHTML = `${winnerAvatar} You Won!`;
-        msgEl.classList.remove('lost');
-    } else {
-        // OPPONENT WON - show red border immediately with symbol animation
-        cards.forEach(c => c.classList.add('wrong'));
-        msgTitle.innerHTML = `You lost!`;
-        msgEl.classList.add('lost');
+let roundBannerTimer = null;
+function showRoundBanner(html, good) {
+    let el = document.getElementById('round-banner');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'round-banner';
+        el.setAttribute('role', 'status');
+        const slot = document.createElement('div');
+        slot.id = 'round-banner-slot';
+        slot.appendChild(el);
+        const board = document.getElementById('board-container');
+        board.parentNode.insertBefore(slot, board);
     }
+    clearInterval(roundBannerTimer);
+    let n = 3;
+    const paint = () => { el.innerHTML = `<span class="rb-who">${html}</span><span class="rb-next">Next in <b>${n}</b></span>`; };
+    el.className = good ? 'is-good' : 'is-other';
+    paint();
+    el.hidden = false;
+    roundBannerTimer = setInterval(() => {
+        n--;
+        if (n > 0) { paint(); return; }
+        clearInterval(roundBannerTimer);
+        if (gameStartTime) resumeTimer();
+        el.querySelector('.rb-next').innerHTML = 'Next round';
+    }, 1000);
+}
 
-    // Delay showing modal so players can see the symbol animation
-    setTimeout(() => {
-        // Show overlay with countdown
-        msgEl.style.display = 'block';
-        const startBtn = msgEl.querySelector('button');
-        startBtn.style.display = 'none'; // Hide start button during countdown
-
-        // Start countdown with winner message
-        let countdown = 3;
-        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (countdown > 0) {
-                msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-            } else {
-                clearInterval(countdownInterval);
-                // Resume timer after countdown
-                if (gameStartTime) {
-                    resumeTimer();
-                }
-                // Keep modal visible at same size - NEW_ROUND handler will hide it when cards arrive
-                msgBody.innerHTML = "&nbsp;";
-            }
-        }, 1000);
-    }, 600); // Delay modal to show symbol animation first
+function hideRoundBanner() {
+    clearInterval(roundBannerTimer);
+    const el = document.getElementById('round-banner');
+    if (el) el.hidden = true;
 }
 
 function handleWrongGuess(data) {
@@ -1373,14 +1379,55 @@ function updateScoreboard(scores, avatars = {}) {
 
     const scoreText = scoreboardParts.join('  ');
 
-    // Add timer if game has started
     if (gameStartTime) {
-        const elapsed = Math.floor((Date.now() - gameStartTime - pausedTime) / 1000);
-        const remaining = Math.max(0, GAME_DURATION - elapsed);
-        scoreEl.innerHTML = `${scoreText}<span class="timer-display"><span style="margin-right: 8px;">Time:</span><span class="timer-number">${remaining}</span>s</span>`;
+        renderGameHud(scores, avatars);
     } else {
+        scoreEl.classList.remove('hud');
         scoreEl.innerHTML = scoreText;
     }
+}
+
+// --- In-game HUD: seats in a fixed order (host first, then by arrival), score under each,
+// a leader mark, and a ring timer on the right. Seats never reorder mid-game.
+let hudPrevScores = {};
+const RING_R = 22, RING_C = 2 * Math.PI * RING_R;
+
+function hudRemaining() {
+    const elapsed = Math.floor((Date.now() - gameStartTime - pausedTime) / 1000);
+    return Math.max(0, GAME_DURATION - elapsed);
+}
+
+function renderGameHud(scores, avatars) {
+    const ids = Object.keys(scores);
+    const order = [currentHostId, ...ids.filter(id => id !== currentHostId)].filter(id => id && ids.includes(id));
+    const top = Math.max(...order.map(id => scores[id]));
+    const leaders = order.filter(id => scores[id] === top);
+    const leaderId = top > 0 && leaders.length === 1 ? leaders[0] : null;
+    const solo = order.length === 1;
+
+    const seats = order.map(id => {
+        const isMe = id === playerId;
+        const prev = hudPrevScores[id];
+        const delta = prev === undefined ? 0 : scores[id] - prev;
+        const cls = ['hud-seat', isMe && 'is-me', id === leaderId && 'is-leader', awayPlayers.has(id) && 'is-away',
+                     delta > 0 && 'did-score', delta < 0 && 'did-miss'].filter(Boolean).join(' ');
+        const bump = delta ? `<span class="hud-delta">${delta > 0 ? '+' : '−'}${Math.abs(delta)}</span>` : '';
+        const label = solo ? 'Score' : (isMe ? 'You' : (id === currentHostId ? 'Host' : 'Player'));
+        return `<div class="${cls}" data-player="${id}">
+            <span class="hud-hex">${getAvatarHTML(avatars[id], 34, { isMe })}</span>
+            <span class="hud-score">${scores[id]}${bump}</span>
+            <span class="hud-label">${label}</span>
+        </div>`;
+    }).join('');
+
+    const remaining = hudRemaining();
+    scoreEl.classList.add('hud');
+    scoreEl.innerHTML = `<div class="hud-seats">${seats}</div>
+        <div class="hud-timer${remaining <= 10 ? ' is-urgent' : ''}" role="timer" aria-label="Seconds left">
+            <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="hud-ring-bg" cx="26" cy="26" r="${RING_R}"/><circle class="hud-ring" cx="26" cy="26" r="${RING_R}" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C * (1 - remaining / GAME_DURATION)}"/></svg>
+            <span class="timer-number">${remaining}</span>
+        </div>`;
+    hudPrevScores = { ...scores };
 }
 
 } // End setupConnectionHandlers
