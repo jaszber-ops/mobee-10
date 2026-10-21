@@ -8,7 +8,7 @@ Møbee Multi is a real-time multiplayer card matching game where players race to
 
 **Live URLs:**
 - Game: https://mobee-10.trippplecard.games
-- Game server (Cloudflare Worker, PartyServer): see GAME_SERVER_HOST in javascript.js
+- Game server (Cloudflare Worker, PartyServer): wss://mobee-multi.jaszber.workers.dev
 
 ## Tech Stack
 

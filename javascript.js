@@ -231,7 +231,7 @@ const savedPartyKitHost = localStorage.getItem('mobee_partykit_host');
 // PartyKit deployed host (allow local override for dev)
 // Game server host. The PartyKit hosted platform shut down on 23 Oct 2026; the server now runs
 // as a Cloudflare Worker (see wrangler.jsonc). Set this to the deployed workers.dev hostname.
-const GAME_SERVER_HOST = "mobee-multi.jaszber-ops.partykit.dev"; // TODO: replace with mobee-multi.<subdomain>.workers.dev
+const GAME_SERVER_HOST = "mobee-multi.jaszber.workers.dev";
 const PARTYKIT_HOST = partykitOverride
     || (isLocalHost ? (savedPartyKitHost || "127.0.0.1:1999") : GAME_SERVER_HOST);
 let roomCode = urlParams.get('room');

@@ -3,7 +3,7 @@
 // Checks: wired buttons, server-chosen host, miss keeps the round alive, reconnect grace.
 import { chromium, devices } from 'playwright';
 import crypto from 'crypto';
-const APP = 'http://localhost:8766/'; const PK = 'pk=127.0.0.1:1999';
+const APP = process.env.APP_URL || 'http://localhost:8766/'; const PK = 'pk=' + (process.env.GAME_HOST || '127.0.0.1:1999'); // GAME_HOST=mobee-multi.jaszber.workers.dev runs against production
 const OUT = (process.env.SHOT_DIR || '.') + '/fix-';
 const results = []; const check = (name, ok, extra = '') => { results.push([ok ? 'PASS' : 'FAIL', name, extra]); console.log(ok ? 'PASS' : 'FAIL', name, extra); };
 
