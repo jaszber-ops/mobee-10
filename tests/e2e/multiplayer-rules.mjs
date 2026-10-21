@@ -39,7 +39,7 @@ await A.goto(APP + '?lobby&' + PK); await A.waitForTimeout(2000);
 await A.locator('#play-friends-card').click();
 await A.waitForTimeout(800);
 check('Play with Friends card opens the friends lobby', await A.locator('#friends-section').isVisible());
-const code = await A.locator('#lobby-room-code').inputValue(); console.log('room', code);
+const code = (await A.locator('#room-code-text').textContent()).replace('Room code', '').replace(/[^A-Z0-9]/g, ''); console.log('room', code);
 await B.goto(APP + '?room=' + code + '&' + PK);
 for (let i = 0; i < 40 && Object.keys(last(ma, 'UPDATE_SCORES')?.scores || {}).length < 2; i++) await A.waitForTimeout(250);
 await A.waitForTimeout(800);

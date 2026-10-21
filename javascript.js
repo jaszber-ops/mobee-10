@@ -443,11 +443,12 @@ function setLobbyMode(mode) {
         lobbyCardsEl.style.display = isMultiplayerLobby ? 'none' : 'block';
     }
     if (friendsSectionEl) {
-        friendsSectionEl.style.display = isMultiplayerLobby ? 'block' : 'none';
+        friendsSectionEl.style.display = isMultiplayerLobby ? 'flex' : 'none';
     }
     if (footerLink) {
         footerLink.style.display = isMultiplayerLobby ? 'none' : ''; // '' lets the phone CSS hide it
     }
+    document.body.classList.toggle('in-room', isMultiplayerLobby);
 }
 
 function showLobby() {
@@ -459,11 +460,7 @@ function showLobby() {
 
     lobbyEl.style.display = 'flex';
     msgEl.style.display = 'none';
-    lobbyRoomCodeEl.value = roomCode;
-    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
-    if (lobbyRoomLinkEl) {
-        lobbyRoomLinkEl.value = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    }
+    renderRoomCode();
     const boardContainer = document.getElementById('board-container');
     if (boardContainer) {
         boardContainer.style.display = 'none';
@@ -556,6 +553,7 @@ function renderPreviewCards() {
 
 function hideLobby() {
     lobbyEl.style.display = 'none';
+    document.body.classList.remove('in-room');
     const boardContainer = document.getElementById('board-container');
     if (boardContainer) {
         boardContainer.style.display = 'flex';
@@ -565,19 +563,40 @@ function hideLobby() {
 function enterMultiplayerLobby() {
     isMultiplayerMode = true;
     setLobbyMode('multiplayer');
-    lobbyRoomCodeEl.value = roomCode;
-    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
-    if (lobbyRoomLinkEl) {
-        lobbyRoomLinkEl.value = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    }
+    renderRoomCode();
     resetLobbyButtons();
+}
+
+const ROOM_LINK = () => `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+
+// The room code, one hexagon per character in the three card colours
+function renderRoomCode() {
+    const tiles = document.getElementById('room-code-tiles');
+    const text = document.getElementById('room-code-text');
+    if (!tiles) return;
+    tiles.innerHTML = [...String(roomCode).toUpperCase()].map((ch, i) =>
+        `<span class="room-tile room-tile-${i % 3}" style="--i:${i}">${ch}</span>`).join('');
+    if (text) text.textContent = `Room code ${[...String(roomCode)].join(' ')}`;
+}
+
+// Short-lived confirmation in a hint line or on a button, then back to its normal text
+function flashText(el, message, ms = 1600) {
+    if (!el) return;
+    clearTimeout(el._flashTimer);
+    if (!el.dataset.restText) el.dataset.restText = el.textContent;
+    el.textContent = message;
+    el.classList.add('is-flashing');
+    el._flashTimer = setTimeout(() => {
+        el.textContent = el.dataset.restText;
+        el.classList.remove('is-flashing');
+    }, ms);
 }
 
 function resetLobbyButtons() {
     const lobbyBtn = document.getElementById('lobby-start-btn');
     if (lobbyBtn) {
         lobbyBtn.disabled = false;
-        lobbyBtn.textContent = 'Start Game';
+        lobbyBtn.textContent = 'Start game';
     }
 }
 
@@ -599,22 +618,18 @@ window.handlePlayFriends = function() {
 };
 
 window.handleShareInvite = async function() {
-    const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    const text = `Join my MØBEE game!\nRoom code: ${roomCode}`;
-
+    const url = ROOM_LINK();
+    const text = `Join my Møbee game. Room code ${roomCode}`;
+    const btn = document.getElementById('send-invite-btn');
     if (navigator.share) {
-        try {
-            await navigator.share({ title: 'MØBEE', text, url });
-        } catch (e) {
-            // User cancelled or error - ignore
-        }
-    } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
-        const btn = document.getElementById('send-invite-btn');
-        if (btn) {
-            btn.textContent = 'Copied!';
-            setTimeout(() => { btn.textContent = 'Share Invite'; }, 1500);
-        }
+        try { await navigator.share({ title: 'Møbee', text, url }); } catch (e) { /* cancelled */ }
+        return;
+    }
+    try {
+        await copyToClipboard(`${text}\n${url}`, null);
+        flashText(btn, 'Invite link copied');
+    } catch (e) {
+        flashText(document.getElementById('room-code-hint'), url, 4000);
     }
 };
 
@@ -637,44 +652,19 @@ async function copyToClipboard(text, buttonEl, successLabel = "Copied!") {
 }
 
 window.handleCopyRoomCode = async function() {
-    const input = document.getElementById('lobby-room-code');
-    const codeValue = normalizeRoomCode(input ? input.value : roomCode) || roomCode;
-
-    if (input) {
-        input.value = codeValue;
-        input.select();
-        input.setSelectionRange(0, input.value.length); // iOS needs this
-    }
-
+    const hint = document.getElementById('room-code-hint');
     try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(codeValue);
-        } else if (input) {
-            document.execCommand('copy');
-        } else {
-            await copyToClipboard(codeValue, null);
-        }
+        await copyToClipboard(String(roomCode), null);
+        flashText(hint, 'Code copied');
+        document.getElementById('room-code-tiles')?.classList.add('is-copied');
+        setTimeout(() => document.getElementById('room-code-tiles')?.classList.remove('is-copied'), 600);
     } catch (e) {
-        console.error('Failed to copy room code:', e);
+        flashText(hint, 'Copy didn’t work. Read the code out instead', 3000);
     }
 };
 
 window.handleCopyRoomLink = async function() {
-    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
-    const codeValue = normalizeRoomCode(document.getElementById('lobby-room-code')?.value || roomCode);
-    const url = `${window.location.origin}${window.location.pathname}?room=${codeValue || roomCode}`;
-    try {
-        await copyToClipboard(url, null);
-        // Visual feedback - focus input (shows blue border) and flash background
-        if (lobbyRoomLinkEl) {
-            lobbyRoomLinkEl.focus();
-            lobbyRoomLinkEl.select();
-            lobbyRoomLinkEl.style.backgroundColor = '#e0f0ff';
-            setTimeout(() => lobbyRoomLinkEl.style.backgroundColor = '', 300);
-        }
-    } catch (e) {
-        console.error('Failed to copy room link:', e);
-    }
+    try { await copyToClipboard(ROOM_LINK(), null); } catch (e) { console.error('Failed to copy room link:', e); }
 };
 
 function normalizeRoomCode(rawValue) {
@@ -689,7 +679,13 @@ window.handleJoinRoomCode = function() {
     if (!input) return;
     const code = normalizeRoomCode(input.value);
     if (code.length < 4) {
-        alert('Please enter a valid room code');
+        input.setCustomValidity('Room codes have 6 letters and numbers');
+        input.reportValidity();
+        input.focus();
+        return;
+    }
+    if (code === String(roomCode).toUpperCase()) {
+        flashText(document.querySelector('.room-join-label'), 'That’s this room’s code', 2000);
         return;
     }
     window.location.href = `${window.location.pathname}?room=${code}`;
@@ -709,7 +705,7 @@ window.handleLobbyStart = function() {
     const btn = document.getElementById('lobby-start-btn');
     if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Starting...';
+        btn.textContent = 'Starting…';
     }
     safeSend({ type: "START_GAME" });
 };
@@ -727,26 +723,39 @@ function updateLobbyPlayers(scores, avatars, hostId) {
     // Find new players for animation
     const newPlayerIds = playerIds.filter(id => !knownPlayerIds.has(id));
 
-    // Build player avatars - same size, border color indicates current player
-    lobbyPlayersEl.innerHTML = playerIds.map(id => {
+    // Five seats: filled ones show the avatar, the rest are open places in the room
+    const MAX_SEATS = 5;
+    const ordered = [currentHostId, ...playerIds.filter(id => id !== currentHostId)].filter(id => playerIds.includes(id));
+    const seats = [];
+    for (let i = 0; i < MAX_SEATS; i++) {
+        const id = ordered[i];
+        if (!id) { seats.push(`<li class="room-seat is-open"><span class="room-seat-hex"></span><span class="room-seat-label">Open</span></li>`); continue; }
         const isMe = id === playerId;
-        const isNew = newPlayerIds.includes(id) && !isMe; // Don't animate ourselves
-        const avatarHtml = getAvatarHTML(avatars[id], 36, { clickable: isMe, isMe, isNew, away: awayPlayers.has(id) });
-        return avatarHtml;
-    }).join('');
+        const isNew = newPlayerIds.includes(id) && !isMe;
+        const isHostSeat = id === currentHostId;
+        const label = isMe ? 'You' : (isHostSeat ? 'Host' : 'Player');
+        const avatar = getAvatarHTML(avatars[id], 52, { clickable: isMe, isMe, isNew, away: awayPlayers.has(id) });
+        const hostTag = isHostSeat && isMe ? '<span class="room-seat-tag">host</span>' : '';
+        seats.push(`<li class="room-seat${isMe ? ' is-me' : ''}${isHostSeat ? ' is-host' : ''}${awayPlayers.has(id) ? ' is-away' : ''}${isNew ? ' is-new' : ''}"><span class="room-seat-hex">${avatar}</span>${hostTag}<span class="room-seat-label">${awayPlayers.has(id) ? 'Away' : label}</span></li>`);
+    }
+    lobbyPlayersEl.innerHTML = seats.join('');
+    const countEl = document.getElementById('room-count');
+    if (countEl) countEl.textContent = `${playerIds.length} of ${MAX_SEATS}`;
 
     // Update known players
     playerIds.forEach(id => knownPlayerIds.add(id));
 
     // Show/hide start button based on host status
+    const titleEl = document.getElementById('room-title');
+    if (titleEl) titleEl.textContent = isHost ? 'Your room' : 'You’re in';
     if (isHost) {
         lobbyStartBtn.style.display = 'block';
         lobbyStartBtn.disabled = false;
-        lobbyStartBtn.textContent = 'Start Game';
+        lobbyStartBtn.textContent = playerIds.length > 1 ? `Start game with ${playerIds.length} players` : 'Start game';
         lobbyWaitingEl.style.display = 'none';
     } else {
         lobbyStartBtn.style.display = 'none';
-        lobbyWaitingEl.style.display = 'block';
+        lobbyWaitingEl.style.display = 'grid';
     }
 }
 
@@ -1482,14 +1491,17 @@ function wireLobby() {
     on('play-solo-card', () => window.handlePlaySolo());
     on('shop-card', () => window.openShopModal());
     on('play-friends-card', () => window.handlePlayFriends());
-    on('room-code-card', () => window.handleRoomCodeCardClick());
-    on('lobby-room-code', () => {}, true);
     on('room-code-copy-btn', () => window.handleCopyRoomCode(), true);
-    on('room-link-card', () => window.handleShareInvite());
-    on('lobby-room-link', () => {}, true);
-    on('room-link-copy-btn', () => window.handleCopyRoomLink(), true);
     on('send-invite-btn', () => window.handleShareInvite(), true);
     on('lobby-start-btn', () => window.handleLobbyStart(), true);
+    on('room-back-btn', () => { window.location.href = `${window.location.pathname}?lobby`; });
+    const joinForm = document.getElementById('room-join-form');
+    if (joinForm) joinForm.addEventListener('submit', (e) => { e.preventDefault(); window.handleJoinRoomCode(); });
+    const joinInput = document.getElementById('lobby-room-code');
+    if (joinInput) joinInput.addEventListener('input', () => {
+        joinInput.setCustomValidity('');
+        joinInput.value = joinInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1580,12 +1592,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         // Don't copy on click - only copy via the copy icon
         // This allows users to paste a new room code without losing their clipboard
-        lobbyCodeInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                window.handleJoinRoomCode();
-            }
-        });
         // Auto-submit when 6 characters are entered (paste or typing)
         lobbyCodeInput.addEventListener('input', () => {
             const code = lobbyCodeInput.value.trim().toUpperCase();

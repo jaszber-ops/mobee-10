@@ -1231,3 +1231,266 @@ img.lobby-card-icon {
     .friends-invite-btn,
     .friends-start-btn { font-size: 0.85rem; padding: 8px 12px; }
 }
+
+/* =============================================================================
+   Friends room (Oct 2026 redesign)
+   One quiet column. The only flourish is the room code: one small card-shaped
+   hexagon per character, in the three Møbee card colours. Seats echo it.
+   ============================================================================= */
+:root {
+    --mb-red: #E6A07F;
+    --mb-yellow: #F9CE79;
+    --mb-green: #BEC887;
+    --mb-ink: #2e2c33;
+    --mb-ink-soft: #6b6873;
+    --mb-line: #dde3ea;
+    --mb-paper: #ffffff;
+    --mb-hex: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+body.in-room #score-el,
+body.in-room #lobby-top-hint { display: none; }
+body.in-room header { margin-bottom: 4px; }
+/* The room is taller than a small phone: let the page scroll while it is open */
+body.in-room #lobby {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding-top: 0;
+}
+@media (pointer: coarse) { body.in-room { touch-action: pan-y; } }
+
+.room {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 0 20px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    color: var(--mb-ink);
+}
+
+.room-block { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+.room-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-align: center;
+}
+
+/* Room code: six mini cards */
+.room-code {
+    appearance: none;
+    border: 0;
+    background: none;
+    padding: 6px;
+    margin: 0;
+    cursor: pointer;
+    border-radius: 12px;
+    -webkit-tap-highlight-color: transparent;
+}
+.room-code:focus-visible { outline: 3px solid var(--mb-yellow); outline-offset: 4px; }
+
+.room-code-tiles { display: flex; gap: 6px; justify-content: center; }
+
+.room-tile {
+    --tile-edge: var(--mb-red);
+    position: relative;
+    width: 46px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    clip-path: var(--mb-hex);
+    background: var(--tile-edge);
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--mb-ink);
+    line-height: 1;
+}
+.room-tile::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    clip-path: var(--mb-hex);
+    background: var(--mb-paper);
+}
+.room-tile { isolation: isolate; }
+.room-tile::before { z-index: -1; }
+.room-tile-1 { --tile-edge: var(--mb-yellow); }
+.room-tile-2 { --tile-edge: var(--mb-green); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .room-code-tiles.is-copied .room-tile {
+        animation: tileHop 0.45s cubic-bezier(.3,1.6,.5,1) both;
+        animation-delay: calc(var(--i) * 35ms);
+    }
+}
+@keyframes tileHop { 0%,100% { transform: translateY(0); } 45% { transform: translateY(-7px); } }
+
+.room-hint {
+    margin: -6px 0 0;
+    font-size: 0.85rem;
+    color: var(--mb-ink-soft);
+    min-height: 1.3em;
+    text-align: center;
+}
+.room-hint.is-flashing { color: #6f7a33; font-weight: 600; }
+
+/* Buttons */
+.room-btn {
+    appearance: none;
+    border: 0;
+    width: 100%;
+    min-height: 52px;
+    padding: 12px 18px;
+    border-radius: 16px;
+    font: 600 1.05rem/1.2 'Poppins', sans-serif;
+    color: var(--mb-ink);
+    cursor: pointer;
+    transition: transform .12s ease, filter .12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.room-btn:active { transform: scale(0.98); }
+.room-btn:focus-visible { outline: 3px solid var(--mb-ink); outline-offset: 3px; }
+.room-btn:disabled { opacity: .55; cursor: default; }
+.room-btn-invite { background: var(--mb-yellow); }
+.room-btn-start { background: var(--mb-green); }
+@media (hover: hover) { .room-btn:hover:not(:disabled) { filter: brightness(1.04); } }
+
+/* Players */
+.room-players-block { gap: 16px; }
+.room-row { width: 100%; display: flex; align-items: baseline; justify-content: space-between; }
+.room-subtitle { margin: 0; font-size: 1rem; font-weight: 600; }
+.room-count { font-size: 0.9rem; color: var(--mb-ink-soft); font-variant-numeric: tabular-nums; }
+
+.room-seats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+}
+.room-seat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.room-seat-tag {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1px 7px 2px;
+    border-radius: 999px;
+    background: var(--mb-ink);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+.room-seat-hex {
+    position: relative;
+    width: 60px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    clip-path: var(--mb-hex);
+    background: var(--mb-green);
+    isolation: isolate;
+}
+.room-seat-hex::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    clip-path: var(--mb-hex);
+    background: var(--mb-paper);
+    z-index: -1;
+}
+.room-seat.is-me .room-seat-hex { background: var(--mb-yellow); }
+.room-seat.is-open .room-seat-hex { background: var(--mb-line); }
+.room-seat.is-open .room-seat-hex::before { background: var(--bg-color); }
+.room-seat.is-away .room-seat-hex { background: var(--mb-line); }
+.room-seat .avatar-sprite { border: 0; margin: 0 !important; }
+.room-seat-label {
+    font-size: 0.75rem;
+    color: var(--mb-ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.room-seat.is-open .room-seat-label { color: #a6abb2; }
+.room-seat.is-me .room-seat-label { color: var(--mb-ink); font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+    .room-seat.is-new .room-seat-hex { animation: avatarPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+}
+
+.room-waiting {
+    margin: 0;
+    width: 100%;
+    min-height: 52px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    border: 2px dashed var(--mb-line);
+    font-size: 0.95rem;
+    color: var(--mb-ink-soft);
+}
+
+/* Join another room */
+.room-join {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 22px;
+    border-top: 1px solid var(--mb-line);
+}
+.room-join-label { font-size: 0.9rem; color: var(--mb-ink-soft); }
+.room-join-label.is-flashing { color: var(--mb-ink); font-weight: 600; }
+.room-join-row { display: flex; gap: 10px; }
+.room-join-input {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    padding: 0 14px;
+    border: 2px solid var(--mb-line);
+    border-radius: 14px;
+    background: var(--mb-paper);
+    font: 600 1.1rem 'Poppins', sans-serif;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--mb-ink);
+}
+.room-join-input::placeholder { color: #c3c8ce; letter-spacing: 0.18em; }
+.room-join-input:focus { outline: none; border-color: var(--mb-yellow); }
+.room-btn-join { width: auto; min-height: 48px; padding: 0 22px; background: var(--mb-paper); border: 2px solid var(--mb-line); }
+
+.room-back {
+    appearance: none;
+    border: 0;
+    background: none;
+    align-self: center;
+    padding: 8px 12px;
+    font: 500 0.9rem 'Poppins', sans-serif;
+    color: var(--mb-ink-soft);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.visually-hidden {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+@media (max-width: 360px) {
+    .room { padding-left: 14px; padding-right: 14px; }
+    .room-tile { width: 40px; height: 45px; font-size: 1.25rem; }
+    .room-seat-hex { width: 52px; height: 59px; }
+}
