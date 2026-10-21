@@ -419,11 +419,23 @@ export default class MobeeServer {
       await this.party.storage.put("gamestate", state);
     }
 
-    // Returning within the grace window: keep seat and score
+    // Returning within the grace window: keep seat and score. Past it (e.g. the
+    // in-memory cleanup timer died with a server restart), start over as a new player.
     if (state.away[playerId]) {
-      console.log(`Player ${playerId} is back`);
-      delete state.away[playerId];
-      this.party.broadcast(createPayload("UPDATE_SCORES", state));
+      if (now - state.away[playerId] < RECONNECT_GRACE_MS) {
+        console.log(`Player ${playerId} is back`);
+        delete state.away[playerId];
+      } else {
+        console.log(`Player ${playerId} returned after the grace window, rejoining fresh`);
+        this.removePlayer(state, playerId);
+      }
+      await this.party.storage.put("gamestate", state);
+    }
+
+    // The host must be someone in the room (a departed host can leave a stale id behind)
+    if (state.hostId && state.scores[state.hostId] === undefined) {
+      state.hostId = Object.keys(state.scores).sort()[0] || playerId;
+      console.log(`Stale host replaced by: ${state.hostId}`);
       await this.party.storage.put("gamestate", state);
     }
 
@@ -549,8 +561,8 @@ export default class MobeeServer {
     delete state.playerLevels[playerId];
     delete state.away[playerId];
     const remaining = Object.keys(state.scores);
-    if (state.hostId === playerId && remaining.length > 0) {
-      state.hostId = remaining.sort()[0];
+    if (state.hostId === playerId) {
+      state.hostId = remaining.sort()[0] || null; // null: the next player to connect becomes host
       console.log(`Host transferred to: ${state.hostId}`);
     }
   }

@@ -717,8 +717,9 @@ function updateLobbyPlayers(scores, avatars, hostId) {
 
     const playerIds = Object.keys(scores);
 
-    // The server decides who hosts (the room creator); fall back to the old heuristic for old servers
-    currentHostId = hostId || playerIds.slice().sort()[0];
+    // The server decides who hosts (the room creator). Fall back to the first id if the server
+    // is older or its hostId points at someone who already left.
+    currentHostId = (hostId && playerIds.includes(hostId)) ? hostId : playerIds.slice().sort()[0];
     const isHost = playerId === currentHostId;
 
     // Find new players for animation
@@ -825,30 +826,9 @@ function updateTimerDisplay(seconds) {
 
 function endGame() {
     clearInterval(gameTimerInterval);
-
-    // Tell server the game ended (so it can reset gameStartTime)
+    // Tell the server our clock hit zero; it answers every player with GAME_OVER,
+    // which is what actually ends the game on all phones at once.
     safeSend({ type: "END_GAME" });
-
-    // Get current scores to determine winner
-    conn.addEventListener("message", (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (data.type === "UPDATE_SCORES") {
-                showGameOverScreen(data.scores, data.avatars);
-            }
-        } catch (e) {
-            console.error("Failed to parse message:", e, event.data);
-            if (typeof Sentry !== 'undefined') {
-                Sentry.captureException(e, {
-                    tags: { component: 'message-parsing' },
-                    extra: { rawData: event.data }
-                });
-            }
-        }
-    });
-
-    // Request current scores
-    safeSend({ type: "GET_SCORES" });
 }
 
 function showGameOverScreen(scores, avatars) {
@@ -898,7 +878,10 @@ function showGameOverScreen(scores, avatars) {
 
     const startBtn = msgEl.querySelector('button');
     startBtn.innerText = "Play Again";
-    startBtn.style.display = 'block';
+    // Only the host can start the next game; the server ignores START_GAME from anyone else
+    const amHost = isSinglePlayer || !currentHostId || currentHostId === playerId;
+    startBtn.style.display = amHost ? 'block' : 'none';
+    if (!amHost) msgBody.innerHTML += `<div class="friends-waiting" style="margin-top:8px">Waiting for host…</div>`;
     startBtn.onclick = () => {
         // Start a new game immediately
         msgEl.style.display = 'none';
@@ -925,6 +908,7 @@ conn.addEventListener("message", (event) => {
     console.log("Server Msg:", data);
 
     if (Array.isArray(data.away)) awayPlayers = new Set(data.away);
+    if (data.hostId && data.scores && data.scores[data.hostId] !== undefined) currentHostId = data.hostId;
 
     switch (data.type) {
         case "ROOM_FULL":
@@ -1000,6 +984,15 @@ conn.addEventListener("message", (event) => {
 
         case "WINNER":
             handleWinner(data);
+            break;
+
+        case "GAME_OVER":
+            // The server's clock decides; clients drift by a second or two after round pauses
+            disarmNextRoundWatchdog();
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            pauseStartTime = null;
+            updateScoreboard(data.scores, data.avatars); // keeps final scores on the board
+            showGameOverScreen(data.scores, data.avatars);
             break;
 
         case "WRONG_GUESS":

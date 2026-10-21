@@ -90,7 +90,15 @@ await shot(B, '08-B-back');
 // 5. game over still arrives
 for (let i = 0; i < 160 && !last(ma, 'GAME_OVER'); i++) await A.waitForTimeout(500);
 check('GAME_OVER arrives', !!last(ma, 'GAME_OVER'), JSON.stringify(last(ma, 'GAME_OVER')?.scores));
-await shot(A, '09-over');
+await shot(A, '09-over'); await shot(B, '10-over-guest');
+
+check('After game over only the host gets Play Again', (await A.locator('#message button').isVisible()) && !(await B.locator('#message button').isVisible()) && (await B.locator('#message').innerText()).includes('Waiting for host'));
+
+// 6. stale host: everyone leaves, grace runs out, a newcomer must become host
+await ca.close(); await cb.close(); await new Promise(r => setTimeout(r, 22000));
+const [cc, mc, C] = await mk('3,3', 'CCCC');
+await C.goto(APP + '?room=' + code + '&' + PK); await C.waitForTimeout(2500);
+check('Newcomer to an emptied room becomes host', last(mc, 'UPDATE_SCORES')?.hostId === 'CCCC' && (await C.locator('#lobby-start-btn').isVisible()), 'hostId=' + last(mc, 'UPDATE_SCORES')?.hostId);
 await browser.close();
 console.log('\n' + results.map(r => r.join('  ')).join('\n'));
 if (results.some(r => r[0] === 'FAIL')) process.exit(1);
