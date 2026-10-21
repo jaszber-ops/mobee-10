@@ -446,7 +446,7 @@ function setLobbyMode(mode) {
         friendsSectionEl.style.display = isMultiplayerLobby ? 'block' : 'none';
     }
     if (footerLink) {
-        footerLink.style.display = isMultiplayerLobby ? 'none' : 'block';
+        footerLink.style.display = isMultiplayerLobby ? 'none' : ''; // '' lets the phone CSS hide it
     }
 }
 
@@ -1149,10 +1149,6 @@ function renderBoard(serverCards, isSpectator = false) {
                 }
                 cardEl.appendChild(symContainer);
             });
-            const sticker = document.createElement('div');
-            sticker.className = 'card-symbol-sticker';
-            sticker.innerHTML = `<div style="width:10px;height:10px;background:url('assets/mobee_logo_sm.png') center/contain no-repeat white;border-radius:50%;filter:grayscale(100%) opacity(0.2)"></div>`;
-            cardEl.appendChild(sticker);
         } else {
             // Level 2: 12-symbol layout (inner and outer rings)
             const symbolsContainer = document.createElement('div');

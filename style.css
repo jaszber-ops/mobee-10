@@ -1192,3 +1192,42 @@ img.lobby-card-icon {
 .avatar-sprite.away { opacity: 0.35; filter: grayscale(1); }
 /* Someone else tapped wrong */
 .avatar-sprite.missed { animation: shake 0.4s; filter: drop-shadow(0 0 6px var(--error)); }
+
+/* =============================================================================
+   Phone layout fixes (Oct 2026)
+   The lobby hex cards were a fixed 600 px square, wider than any phone, and the
+   desktop-only / mobile-only helper classes had no rules at all.
+   ============================================================================= */
+.mobile-only { display: none; }
+
+.lobby-top-hint {
+    text-align: center;
+    padding: 0 16px;
+    margin: 0 auto 8px;
+    max-width: 36ch;
+    font-size: 1rem;
+    line-height: 1.4;
+    text-wrap: balance;
+}
+
+@media (max-width: 700px) {
+    .desktop-only { display: none !important; }
+    .mobile-only { display: block; }
+
+    .lobby { padding: 8px 0; }
+
+    /* Square hex area that fits the screen; card positions and sizes are percentages */
+    .lobby-cards {
+        width: min(calc(100vw - 16px), 600px);
+        height: min(calc(100vw - 16px), 600px);
+    }
+
+    .lobby-card-label,
+    .friends-card-label { font-size: 0.85rem; }
+
+    .friends-card-content { gap: 6px; }
+    .friends-code-input,
+    .friends-link-input { font-size: 0.8rem; padding: 6px 24px 6px 6px; }
+    .friends-invite-btn,
+    .friends-start-btn { font-size: 0.85rem; padding: 8px 12px; }
+}
