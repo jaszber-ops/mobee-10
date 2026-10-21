@@ -1,0 +1,12 @@
+{
+  // Møbee Multi game server. Deploy: npx wrangler deploy  ·  Dev: npx wrangler dev --port 1999
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mobee-multi",
+  "main": "party/server.js",
+  "compatibility_date": "2025-10-01",
+  "durable_objects": {
+    "bindings": [{ "name": "Main", "class_name": "MobeeServer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MobeeServer"] }],
+  "observability": { "enabled": true }
+}

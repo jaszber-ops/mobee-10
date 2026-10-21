@@ -1,5 +1,9 @@
 /**
- * Møbee Multi - PartyKit Server
+ * Møbee Multi - PartyServer (Cloudflare Workers + Durable Objects)
+ *
+ * Ported from PartyKit in Oct 2026 when the hosted platform shut down.
+ * Same room model: one Durable Object per room code, in-memory connections
+ * (hibernation off, so setTimeout and per-connection fields keep working).
  *
  * Real-time multiplayer game server handling:
  * - Player connections and disconnections
@@ -8,6 +12,7 @@
  * - Session security and rate limiting
  */
 
+import { Server, routePartykitRequest } from "partyserver";
 import { generateDeck } from "./game-math.js";
 
 // =============================================================================
@@ -20,10 +25,12 @@ const MAX_PLAYERS = 5;            // Maximum players per room
 const GAME_DURATION_MS = 60000;   // 60 second game duration
 const COUNTDOWN_DURATION_MS = 3000; // 3 second countdown before game starts
 const GUESS_RATE_LIMIT_MS = 150;  // Minimum ms between guesses
+const MISS_LOCKOUT_MS = 1000;     // A wrong tap locks that player out for this long; the round continues
+const RECONNECT_GRACE_MS = 20000; // A dropped socket keeps its seat and score for this long
 const SINGLE_PLAYER_DELAY = 300;  // Delay between rounds (single player)
 const MULTI_PLAYER_DELAY = 4000;  // Delay between rounds (multiplayer)
 
-const ASSET_ORIGIN = "https://mobee-10.trippplecard.games"; // where the symbol PNGs live
+const DEFAULT_ASSET_ORIGIN = "https://mobee-10.trippplecard.games"; // where the symbol PNGs live (override with the ASSET_ORIGIN var)
 const pngCache = new Map();                                    // symbol name → Promise<ArrayBuffer>
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => { for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1; return n >>> 0; });
 const crc32 = bytes => { let c = 0xffffffff; for (const b of bytes) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
@@ -60,6 +67,7 @@ function createPayload(type, state, extra = {}) {
     playerLevels: state.playerLevels,
     avatars: state.avatars,
     hostId: state.hostId,
+    away: Object.keys(state.away || {}),
     ...extra
   });
 }
@@ -68,12 +76,16 @@ function createPayload(type, state, extra = {}) {
 // MAIN SERVER CLASS
 // =============================================================================
 
-export default class MobeeServer {
-  constructor(party) {
-    this.party = party;
+export class MobeeServer extends Server {
+  static options = { hibernate: false };
+
+  constructor(ctx, env) {
+    super(ctx, env);
     // Message queue ensures sequential processing of async operations
     this._queue = Promise.resolve();
   }
+
+  get storage() { return this.ctx.storage; }
 
   // ---------------------------------------------------------------------------
   // STATE INITIALIZATION
@@ -101,6 +113,7 @@ export default class MobeeServer {
       gameStartTime: null,
       gameEndsAt: null,
       countdownStartAt: null,
+      away: {},          // playerId → ms timestamp of disconnect, while inside the reconnect grace
       hostId
     };
   }
@@ -113,6 +126,7 @@ export default class MobeeServer {
     state.playerLevels = state.playerLevels || {};
     state.qualifiedForLevel = state.qualifiedForLevel || {};
     state.currentLevel = state.currentLevel || 1;
+    state.away = state.away || {};
 
     if (!state.hostId) {
       const existingPlayers = Object.keys(state.scores);
@@ -204,17 +218,18 @@ export default class MobeeServer {
     state.currentDeckIndices = indices;
     state.currentAnswer = answer;
     state.currentShuffledCards = cards;
+    state.currentTokenCards = tokenCards; // what late joiners and returning players get
     state.roundTokens = tokens;
     state.status = "playing";
 
     // Broadcast new round
-    this.party.broadcast(createPayload("NEW_ROUND", state, {
+    this.broadcast(createPayload("NEW_ROUND", state, {
       cards: tokenCards,
       level,
       gameStartTime: state.gameStartTime
     }));
 
-    await this.party.storage.put("gamestate", state);
+    await this.storage.put("gamestate", state);
   }
 
   // ---------------------------------------------------------------------------
@@ -300,7 +315,7 @@ export default class MobeeServer {
    */
   scheduleGameEndCheck(gameStartTime) {
     const check = async () => {
-      const state = await this.party.storage.get("gamestate");
+      const state = await this.storage.get("gamestate");
 
       // Stop if game was reset or different game
       if (!state || state.gameStartTime !== gameStartTime) {
@@ -342,9 +357,9 @@ export default class MobeeServer {
     state.gameEndsAt = null;
     state.status = "waiting";
 
-    await this.party.storage.put("gamestate", state);
+    await this.storage.put("gamestate", state);
 
-    this.party.broadcast(createPayload("GAME_OVER", state, {
+    this.broadcast(createPayload("GAME_OVER", state, {
       qualifiedForLevel: state.qualifiedForLevel
     }));
   }
@@ -359,10 +374,11 @@ export default class MobeeServer {
    */
   async onRequest(req) {
     const token = new URL(req.url).pathname.match(/\/s\/([a-f0-9]{8})$/)?.[1];
-    const state = token && await this.party.storage.get("gamestate");
+    const state = token && await this.storage.get("gamestate");
     const name = state?.roundTokens?.[token];
     if (!name) return new Response("not found", { status: 404 });
-    if (!pngCache.has(name)) pngCache.set(name, fetch(`${ASSET_ORIGIN}/assets/symbols/${name}.png`).then(r => r.arrayBuffer()));
+    const origin = this.env?.ASSET_ORIGIN || DEFAULT_ASSET_ORIGIN;
+    if (!pngCache.has(name)) pngCache.set(name, fetch(`${origin}/assets/symbols/${name}.png`).then(r => r.arrayBuffer()));
     const png = new Uint8Array(await pngCache.get(name));
     const pad = crypto.getRandomValues(new Uint8Array(5 + Math.floor(Math.random() * 4000)));
     const body = new Uint8Array(png.length + pad.length + 12);
@@ -376,9 +392,9 @@ export default class MobeeServer {
     return new Response(body, { headers: { "Content-Type": "image/png", "Cache-Control": "no-store" } });
   }
 
-  async onConnect(conn) {
+  async onConnect(conn, { request }) {
     // Extract player ID from query params or use connection ID
-    const playerId = new URL(conn.uri).searchParams.get('playerId') || conn.id;
+    const playerId = new URL(request.url).searchParams.get('playerId') || conn.id;
     conn.playerId = playerId;
 
     // Generate session token for security
@@ -388,30 +404,49 @@ export default class MobeeServer {
     console.log(`Player connected: ${playerId}`);
 
     // Get or create game state
-    let state = await this.party.storage.get("gamestate");
+    let state = await this.storage.get("gamestate");
     if (!state) {
       state = this.createInitialState(playerId);
-      await this.party.storage.put("gamestate", state);
+      await this.storage.put("gamestate", state);
     }
 
     state = this.migrateState(state, playerId);
 
     // Clean up disconnected players
-    const activeIds = [...this.party.getConnections()]
+    const activeIds = [...this.getConnections()]
       .map(c => c.playerId)
       .filter(Boolean);
 
+    // A player with no socket is a zombie unless they dropped within the grace window
+    const now = Date.now();
     const zombies = Object.keys(state.scores)
-      .filter(id => !activeIds.includes(id) && id !== playerId);
+      .filter(id => !activeIds.includes(id) && id !== playerId)
+      .filter(id => !(state.away[id] && now - state.away[id] < RECONNECT_GRACE_MS));
 
     if (zombies.length > 0) {
       console.log("Cleaning zombies:", zombies);
-      zombies.forEach(id => {
-        delete state.scores[id];
-        delete state.avatars[id];
-        delete state.playerLevels[id];
-      });
-      await this.party.storage.put("gamestate", state);
+      zombies.forEach(id => this.removePlayer(state, id));
+      await this.storage.put("gamestate", state);
+    }
+
+    // Returning within the grace window: keep seat and score. Past it (e.g. the
+    // in-memory cleanup timer died with a server restart), start over as a new player.
+    if (state.away[playerId]) {
+      if (now - state.away[playerId] < RECONNECT_GRACE_MS) {
+        console.log(`Player ${playerId} is back`);
+        delete state.away[playerId];
+      } else {
+        console.log(`Player ${playerId} returned after the grace window, rejoining fresh`);
+        this.removePlayer(state, playerId);
+      }
+      await this.storage.put("gamestate", state);
+    }
+
+    // The host must be someone in the room (a departed host can leave a stale id behind)
+    if (state.hostId && state.scores[state.hostId] === undefined) {
+      state.hostId = Object.keys(state.scores).sort()[0] || playerId;
+      console.log(`Stale host replaced by: ${state.hostId}`);
+      await this.storage.put("gamestate", state);
     }
 
     // Check room capacity
@@ -433,7 +468,7 @@ export default class MobeeServer {
         console.log("Resetting expired game");
         state.gameStartTime = null;
         state.status = "waiting";
-        await this.party.storage.put("gamestate", state);
+        await this.storage.put("gamestate", state);
       }
     }
 
@@ -446,7 +481,7 @@ export default class MobeeServer {
         console.log("Resetting stale countdown");
         state.status = "waiting";
         state.countdownStartAt = null;
-        await this.party.storage.put("gamestate", state);
+        await this.storage.put("gamestate", state);
       }
     }
 
@@ -455,8 +490,8 @@ export default class MobeeServer {
       state.scores[playerId] = 0;
       state.playerLevels[playerId] = 1;
 
-      this.party.broadcast(createPayload("UPDATE_SCORES", state));
-      await this.party.storage.put("gamestate", state);
+      this.broadcast(createPayload("UPDATE_SCORES", state));
+      await this.storage.put("gamestate", state);
     }
 
     // Send session token
@@ -470,10 +505,10 @@ export default class MobeeServer {
 
     if (state.status === "countdown") {
       conn.send(createPayload("GAME_STARTING", state, { countdown: 3 }));
-    } else if (state.status === "playing" && state.currentShuffledCards) {
-      // Player joining mid-game can immediately play
+    } else if (state.status === "playing" && state.currentTokenCards) {
+      // Player joining mid-game can immediately play (tokens, never symbol names)
       conn.send(createPayload("NEW_ROUND", state, {
-        cards: state.currentShuffledCards,
+        cards: state.currentTokenCards,
         level: state.currentLevel,
         gameStartTime: state.gameStartTime
       }));
@@ -488,11 +523,11 @@ export default class MobeeServer {
 
     console.log(`Player disconnected: ${playerId}`);
 
-    const state = await this.party.storage.get("gamestate");
+    const state = await this.storage.get("gamestate");
     if (!state) return;
 
     // Check for other connections from same player
-    const otherConns = [...this.party.getConnections()]
+    const otherConns = [...this.getConnections()]
       .filter(c => c.playerId === playerId && c.id !== conn.id);
 
     if (otherConns.length > 0) {
@@ -500,35 +535,53 @@ export default class MobeeServer {
       return;
     }
 
-    // Remove player
+    // Keep the seat for a while: iOS drops the socket whenever the screen locks
+    const droppedAt = Date.now();
+    state.away[playerId] = droppedAt;
+    console.log(`Player ${playerId} away, grace ${RECONNECT_GRACE_MS}ms`);
+    this.broadcast(createPayload("UPDATE_SCORES", state));
+    await this.storage.put("gamestate", state);
+
+    setTimeout(() => {
+      this._queue = this._queue.then(async () => {
+        const current = await this.storage.get("gamestate");
+        if (!current || current.away?.[playerId] !== droppedAt) return; // came back, or a newer drop
+        const stillGone = ![...this.getConnections()].some(c => c.playerId === playerId);
+        if (!stillGone) { delete current.away[playerId]; }
+        else {
+          console.log(`Grace over, removing ${playerId}`);
+          this.removePlayer(current, playerId);
+          if (Object.keys(current.scores).length === 0 && current.status === "countdown") {
+            current.status = "waiting";
+            current.countdownStartAt = null;
+          }
+        }
+        this.broadcast(createPayload("UPDATE_SCORES", current));
+        await this.storage.put("gamestate", current);
+      }).catch(console.error);
+    }, RECONNECT_GRACE_MS);
+  }
+
+  /**
+   * Drop a player from the room; hands the host role on if needed
+   */
+  removePlayer(state, playerId) {
     delete state.scores[playerId];
     delete state.avatars[playerId];
     delete state.playerLevels[playerId];
-
-    const remaining = Object.keys(state.scores).length;
-    console.log(`Removed player. Remaining: ${remaining}`);
-
-    // Transfer host if needed
-    if (state.hostId === playerId && remaining > 0) {
-      state.hostId = Object.keys(state.scores).sort()[0];
+    delete state.away[playerId];
+    const remaining = Object.keys(state.scores);
+    if (state.hostId === playerId) {
+      state.hostId = remaining.sort()[0] || null; // null: the next player to connect becomes host
       console.log(`Host transferred to: ${state.hostId}`);
     }
-
-    // Cancel countdown if no players
-    if (remaining === 0 && state.status === "countdown") {
-      state.status = "waiting";
-      state.countdownStartAt = null;
-    }
-
-    this.party.broadcast(createPayload("UPDATE_SCORES", state));
-    await this.party.storage.put("gamestate", state);
   }
 
   // ---------------------------------------------------------------------------
   // MESSAGE HANDLERS
   // ---------------------------------------------------------------------------
 
-  async onMessage(message, sender) {
+  async onMessage(sender, message) {
     // Queue messages for sequential processing
     this._queue = this._queue
       .then(() => this._handleMessage(message, sender))
@@ -544,13 +597,18 @@ export default class MobeeServer {
       return;
     }
 
-    const state = await this.party.storage.get("gamestate");
+    const state = await this.storage.get("gamestate");
     const playerCount = Object.keys(state.scores).length;
     const isSinglePlayer = playerCount === 1;
     const isMultiplayer = playerCount > 1;
 
     switch (data.type) {
       case "START_GAME":
+        // Between games only the host starts; mid-game anyone may nudge the next round (watchdog)
+        if (isMultiplayer && state.status === "waiting" && !state.gameStartTime && sender.playerId !== state.hostId) {
+          console.log("START_GAME ignored, not host:", sender.playerId);
+          break;
+        }
         await this.handleStartGame(state, data, isMultiplayer);
         break;
 
@@ -576,8 +634,8 @@ export default class MobeeServer {
 
       case "UPDATE_AVATAR":
         state.avatars[sender.playerId] = data.avatar;
-        this.party.broadcast(createPayload("UPDATE_SCORES", state));
-        await this.party.storage.put("gamestate", state);
+        this.broadcast(createPayload("UPDATE_SCORES", state));
+        await this.storage.put("gamestate", state);
         break;
     }
   }
@@ -612,20 +670,20 @@ export default class MobeeServer {
         state.playerLevels[pid] = 1;
       }
       state.currentLevel = 1;
-      await this.party.storage.put("gamestate", state);
+      await this.storage.put("gamestate", state);
     }
 
     if (isMultiplayer) {
       // Start countdown
       state.status = "countdown";
       state.countdownStartAt = Date.now();
-      await this.party.storage.put("gamestate", state);
+      await this.storage.put("gamestate", state);
 
-      this.party.broadcast(createPayload("GAME_STARTING", state, { countdown: 3 }));
+      this.broadcast(createPayload("GAME_STARTING", state, { countdown: 3 }));
 
       // Start game after countdown
       setTimeout(async () => {
-        const currentState = await this.party.storage.get("gamestate");
+        const currentState = await this.storage.get("gamestate");
         await this.startGame(currentState, true);
       }, COUNTDOWN_DURATION_MS);
     } else {
@@ -647,8 +705,8 @@ export default class MobeeServer {
     state.gameStartTime = null;
     state.status = "waiting";
 
-    this.party.broadcast(createPayload("GAME_RESET", state));
-    await this.party.storage.put("gamestate", state);
+    this.broadcast(createPayload("GAME_RESET", state));
+    await this.storage.put("gamestate", state);
   }
 
   async handleGuess(state, data, sender, isSinglePlayer) {
@@ -668,6 +726,11 @@ export default class MobeeServer {
     }
     sender.lastGuessTime = now;
 
+    if (sender.lockedUntil && now < sender.lockedUntil) {
+      console.log("Locked out after a miss:", sender.playerId);
+      return;
+    }
+
     // Check if game expired
     if (state.gameEndsAt && now > state.gameEndsAt) {
       console.log("Guess after game ended");
@@ -682,9 +745,8 @@ export default class MobeeServer {
 
     console.log(`${guesser} guessed ${guessedSymbol} (${data.token}) | Answer: ${state.currentAnswer} | ${isCorrect ? 'CORRECT' : 'WRONG'}`);
 
-    state.status = "waiting";
-
     if (isCorrect) {
+      state.status = "waiting";
       // Update score
       const newScore = (state.scores[guesser] || 0) + 1;
       state.scores[guesser] = newScore;
@@ -697,7 +759,7 @@ export default class MobeeServer {
         console.log(`${guesser} qualified for Level 2`);
       }
 
-      this.party.broadcast(createPayload("WINNER", state, {
+      this.broadcast(createPayload("WINNER", state, {
         winnerId: guesser,
         winningTokens: Object.keys(state.roundTokens).filter(t => state.roundTokens[t] === state.currentAnswer)
       }));
@@ -727,11 +789,22 @@ export default class MobeeServer {
         }
       }
 
-      this.party.broadcast(createPayload("WRONG_GUESS", state, {
+      // A miss costs only the tapper: a short lockout, and the round goes on for everyone
+      sender.lockedUntil = now + MISS_LOCKOUT_MS;
+
+      this.broadcast(createPayload("WRONG_GUESS", state, {
         guesserId: guesser,
+        lockoutMs: MISS_LOCKOUT_MS,
         levelChanged,
         newLevel: levelChanged ? newLevel : undefined
       }));
+
+      if (!levelChanged) {
+        await this.storage.put("gamestate", state);
+        return;
+      }
+      // Level dropped: the deck changed, so deal a fresh round
+      state.status = "waiting";
     }
 
     // Extend game time to account for pause
@@ -739,12 +812,28 @@ export default class MobeeServer {
       state.gameEndsAt += delay;
     }
 
-    await this.party.storage.put("gamestate", state);
+    await this.storage.put("gamestate", state);
 
     // Schedule next round
     setTimeout(async () => {
-      const currentState = await this.party.storage.get("gamestate");
+      const currentState = await this.storage.get("gamestate");
       await this.startNewRound(currentState);
     }, delay);
   }
 }
+
+// =============================================================================
+// WORKER ENTRY
+// =============================================================================
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    // Older clients (and the tvOS app) connect to /party/<room>; PartyServer routes /parties/main/<room>
+    if (url.pathname.startsWith("/party/")) {
+      url.pathname = url.pathname.replace("/party/", "/parties/main/");
+      request = new Request(url, request);
+    }
+    return (await routePartykitRequest(request, env)) || new Response("Not found", { status: 404 });
+  }
+};

@@ -105,62 +105,49 @@
     </div>
 
     <!-- =================================================================
-         FRIENDS SECTION - Multiplayer Room Setup
-         Hidden by default, shown when "Play with Friends" is clicked
+         FRIENDS ROOM - invite, see who's in, start; or join another room
+         Hidden by default, shown when "Play with Friends" is chosen
          ================================================================= -->
-    <div id="friends-section" style="display:none;">
-        <div id="friends-cards" class="lobby-cards">
+    <section id="friends-section" class="room" style="display:none;" aria-labelledby="room-title">
 
-            <!-- Card 1: Room Code Input -->
-            <div class="card friends-card" id="room-code-card">
-                <svg class="card-bg" viewBox="0 0 260 300">
-                    <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
-                </svg>
-                <div class="friends-card-content">
-                    <div class="friends-card-label">Room Code</div>
-                    <div class="friends-input-wrap">
-                        <input type="text" id="lobby-room-code" class="friends-code-input"
-                               maxlength="6" style="text-transform: uppercase;"
-                               enterkeyhint="go" inputmode="text" autocapitalize="characters">
-                        <span class="friends-copy-icon" id="room-code-copy-btn"></span>
-                    </div>
-                    <div class="friends-card-hint" id="room-code-hint">Enter or copy code</div>
-                </div>
-            </div>
-
-            <!-- Card 2: Room Link & Invite -->
-            <div class="card friends-card" id="room-link-card">
-                <svg class="card-bg" viewBox="0 0 260 300">
-                    <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
-                </svg>
-                <div class="friends-card-content">
-                    <div class="friends-card-label">Room Link</div>
-                    <div class="friends-input-wrap">
-                        <input type="text" id="lobby-room-link" class="friends-link-input" readonly>
-                        <span class="friends-copy-icon" id="room-link-copy-btn"></span>
-                    </div>
-                    <button class="friends-invite-btn" id="send-invite-btn">Send Invite</button>
-                </div>
-            </div>
-
-            <!-- Card 3: Players & Start Game -->
-            <div class="card friends-card" id="start-game-card">
-                <svg class="card-bg" viewBox="0 0 260 300">
-                    <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
-                </svg>
-                <div class="friends-card-content">
-                    <div id="lobby-players" class="friends-players"></div>
-                    <button id="lobby-start-btn" class="friends-start-btn">Start Game</button>
-                    <div id="lobby-waiting" class="friends-waiting" style="display:none;">Waiting for host…</div>
-                </div>
-            </div>
+        <div class="room-block room-code-block">
+            <h2 id="room-title" class="room-title">Your room</h2>
+            <button type="button" class="room-code" id="room-code-copy-btn" aria-describedby="room-code-hint">
+                <span class="room-code-tiles" id="room-code-tiles" aria-hidden="true"></span>
+                <span class="visually-hidden" id="room-code-text"></span>
+            </button>
+            <p class="room-hint" id="room-code-hint" aria-live="polite">Tap the code to copy it</p>
+            <button type="button" class="room-btn room-btn-invite" id="send-invite-btn">Invite friends</button>
         </div>
-    </div>
+
+        <div class="room-block room-players-block">
+            <div class="room-row">
+                <h3 class="room-subtitle">Players</h3>
+                <span class="room-count" id="room-count">1 of 5</span>
+            </div>
+            <ul id="lobby-players" class="room-seats" aria-label="Players in this room"></ul>
+            <button type="button" id="lobby-start-btn" class="room-btn room-btn-start">Start game</button>
+            <p id="lobby-waiting" class="room-waiting" style="display:none;">Waiting for the host to start</p>
+        </div>
+
+        <form class="room-join" id="room-join-form" autocomplete="off">
+            <label for="lobby-room-code" class="room-join-label">Joining a friend? Enter their code</label>
+            <div class="room-join-row">
+                <input type="text" id="lobby-room-code" class="room-join-input" maxlength="6"
+                       placeholder="ABC123" enterkeyhint="go" inputmode="text"
+                       autocapitalize="characters" spellcheck="false">
+                <button type="submit" class="room-btn room-btn-join">Join</button>
+            </div>
+        </form>
+
+        <button type="button" class="room-back" id="room-back-btn">Back to menu</button>
+    </section>
 </div>
 
 <!-- =================================================================
      GAME BOARD - Where Cards Are Displayed During Gameplay
      ================================================================= -->
+<div id="round-banner-slot"><div id="round-banner" role="status" hidden></div></div>
 <div id="board-container" style="display: none;">
     <div id="game-board"></div>
 </div>

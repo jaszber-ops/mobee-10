@@ -8,13 +8,13 @@ Møbee Multi is a real-time multiplayer card matching game where players race to
 
 **Live URLs:**
 - Game: https://mobee-10.trippplecard.games
-- PartyKit WebSocket: wss://mobee-multi.jaszber-ops.partykit.dev
+- Game server (Cloudflare Worker, PartyServer): wss://mobee-multi.jaszber.workers.dev
 
 ## Tech Stack
 
 - **Frontend**: Vanilla JavaScript (ES6 modules), HTML5, CSS3
-- **Backend**: PartyKit (real-time multiplayer WebSocket server)
-- **Hosting**: Vercel (frontend), PartyKit (backend)
+- **Backend**: PartyServer on Cloudflare Workers + Durable Objects (PartyKit's successor; the hosted PartyKit platform shut down Oct 2026)
+- **Hosting**: Vercel (frontend), Cloudflare Workers (backend)
 - **Monitoring**: Sentry error tracking
 
 ## Project Structure
@@ -26,14 +26,14 @@ Møbee Multi is a real-time multiplayer card matching game where players race to
 ├── version.js              # Version tracking
 ├── service-worker.js       # PWA offline support
 ├── party/
-│   ├── server.js           # PartyKit multiplayer server (~400 lines)
+│   ├── server.js           # PartyServer multiplayer server (Durable Object per room)
 │   └── game-math.js        # Card generation algorithm (projective plane math)
 ├── assets/
 │   ├── mobee_sprite.svg    # Avatar sprite sheet (130 avatars)
 │   ├── symbols/            # 30 individual symbol PNGs
 │   ├── mobee_logo.png      # Main logo
 │   └── mobee-box/          # Product carousel images (15)
-├── partykit.json           # PartyKit configuration
+├── wrangler.jsonc          # Cloudflare Workers / Durable Object configuration
 ├── vercel.json             # Vercel deployment config
 ├── CLAUDE.md               # This file
 ├── DOCUMENTATION.md        # Complete technical docs
@@ -46,17 +46,20 @@ Møbee Multi is a real-time multiplayer card matching game where players race to
 # Install dependencies
 npm install
 
-# Run PartyKit dev server (multiplayer backend)
+# Run the game server locally (multiplayer backend)
 npm run dev
-# or: npx partykit dev
+# or: npx wrangler dev --port 1999 --var ASSET_ORIGIN:http://127.0.0.1:8000
 
 # Serve frontend locally (run in separate terminal)
 npx serve .
 # or: python3 -m http.server 8000
 
-# Deploy PartyKit backend
+# Deploy the game server (needs `npx wrangler login` once)
 npm run deploy
-# or: npx partykit deploy
+# or: npx wrangler deploy
+
+# Two-phone end-to-end test (needs playwright + a Chromium; see the header of the file)
+node tests/e2e/multiplayer-rules.mjs
 
 # Deploy Vercel frontend
 vercel --prod
@@ -132,7 +135,7 @@ GUESS_RATE_LIMIT_MS = 150   // Anti-spam rate limit
 
 - Test multiplayer by opening multiple browser tabs with same `?room=CODE` parameter
 - No build step needed for frontend; changes are immediate
-- PartyKit dev server auto-reloads on changes to `party/` files
+- `wrangler dev` auto-reloads on changes to `party/` files
 - Room link with `?room=XXXX` goes directly to Play with Friends page
 - Single player mode skips the 3-2-1 countdown
-- Current version: v1.5.102 (check `version.js`)
+- Current version: see `version.js`

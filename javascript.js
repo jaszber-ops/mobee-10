@@ -229,8 +229,11 @@ if (partykitOverride) {
 const savedPartyKitHost = localStorage.getItem('mobee_partykit_host');
 
 // PartyKit deployed host (allow local override for dev)
+// Game server host. The PartyKit hosted platform shut down on 23 Oct 2026; the server now runs
+// as a Cloudflare Worker (see wrangler.jsonc). Set this to the deployed workers.dev hostname.
+const GAME_SERVER_HOST = "mobee-multi.jaszber.workers.dev";
 const PARTYKIT_HOST = partykitOverride
-    || (isLocalHost ? (savedPartyKitHost || "127.0.0.1:1999") : "mobee-multi.jaszber-ops.partykit.dev");
+    || (isLocalHost ? (savedPartyKitHost || "127.0.0.1:1999") : GAME_SERVER_HOST);
 let roomCode = urlParams.get('room');
 // Symbol images are served by the game server under the round token: /s/<token>
 const symbolUrl = token => `${isLocalHost ? 'http' : 'https'}://${PARTYKIT_HOST}/parties/main/${encodeURIComponent(roomCode)}/s/${token}`;
@@ -428,6 +431,7 @@ function disarmNextRoundWatchdog() {
 
 // --- Lobby Functions ---
 let isMultiplayerMode = false;
+let guessLockedUntil = 0; // after a miss the server ignores our taps for a moment; mirror that here
 let currentHostId = null;
 let knownPlayerIds = new Set(); // Track players we've seen to animate new ones
 
@@ -439,11 +443,12 @@ function setLobbyMode(mode) {
         lobbyCardsEl.style.display = isMultiplayerLobby ? 'none' : 'block';
     }
     if (friendsSectionEl) {
-        friendsSectionEl.style.display = isMultiplayerLobby ? 'block' : 'none';
+        friendsSectionEl.style.display = isMultiplayerLobby ? 'flex' : 'none';
     }
     if (footerLink) {
-        footerLink.style.display = isMultiplayerLobby ? 'none' : 'block';
+        footerLink.style.display = isMultiplayerLobby ? 'none' : ''; // '' lets the phone CSS hide it
     }
+    document.body.classList.toggle('in-room', isMultiplayerLobby);
 }
 
 function showLobby() {
@@ -455,11 +460,7 @@ function showLobby() {
 
     lobbyEl.style.display = 'flex';
     msgEl.style.display = 'none';
-    lobbyRoomCodeEl.value = roomCode;
-    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
-    if (lobbyRoomLinkEl) {
-        lobbyRoomLinkEl.value = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    }
+    renderRoomCode();
     const boardContainer = document.getElementById('board-container');
     if (boardContainer) {
         boardContainer.style.display = 'none';
@@ -543,7 +544,6 @@ function renderPreviewCards() {
                     <path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />
                 </svg>
                 <div class="card-12-symbols">
-                    <img src="assets/mobee_logo_sm.png" class="center-logo" alt="Møbee" draggable="false">
                     ${symbolsHtml}
                 </div>
             </div>
@@ -553,6 +553,7 @@ function renderPreviewCards() {
 
 function hideLobby() {
     lobbyEl.style.display = 'none';
+    document.body.classList.remove('in-room');
     const boardContainer = document.getElementById('board-container');
     if (boardContainer) {
         boardContainer.style.display = 'flex';
@@ -562,19 +563,40 @@ function hideLobby() {
 function enterMultiplayerLobby() {
     isMultiplayerMode = true;
     setLobbyMode('multiplayer');
-    lobbyRoomCodeEl.value = roomCode;
-    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
-    if (lobbyRoomLinkEl) {
-        lobbyRoomLinkEl.value = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    }
+    renderRoomCode();
     resetLobbyButtons();
+}
+
+const ROOM_LINK = () => `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+
+// The room code, one hexagon per character in the three card colours
+function renderRoomCode() {
+    const tiles = document.getElementById('room-code-tiles');
+    const text = document.getElementById('room-code-text');
+    if (!tiles) return;
+    tiles.innerHTML = [...String(roomCode).toUpperCase()].map((ch, i) =>
+        `<span class="room-tile room-tile-${i % 3}" style="--i:${i}">${ch}</span>`).join('');
+    if (text) text.textContent = `Room code ${[...String(roomCode)].join(' ')}`;
+}
+
+// Short-lived confirmation in a hint line or on a button, then back to its normal text
+function flashText(el, message, ms = 1600) {
+    if (!el) return;
+    clearTimeout(el._flashTimer);
+    if (!el.dataset.restText) el.dataset.restText = el.textContent;
+    el.textContent = message;
+    el.classList.add('is-flashing');
+    el._flashTimer = setTimeout(() => {
+        el.textContent = el.dataset.restText;
+        el.classList.remove('is-flashing');
+    }, ms);
 }
 
 function resetLobbyButtons() {
     const lobbyBtn = document.getElementById('lobby-start-btn');
     if (lobbyBtn) {
         lobbyBtn.disabled = false;
-        lobbyBtn.textContent = 'Start Game';
+        lobbyBtn.textContent = 'Start game';
     }
 }
 
@@ -596,22 +618,18 @@ window.handlePlayFriends = function() {
 };
 
 window.handleShareInvite = async function() {
-    const url = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-    const text = `Join my MØBEE game!\nRoom code: ${roomCode}`;
-
+    const url = ROOM_LINK();
+    const text = `Join my Møbee game. Room code ${roomCode}`;
+    const btn = document.getElementById('send-invite-btn');
     if (navigator.share) {
-        try {
-            await navigator.share({ title: 'MØBEE', text, url });
-        } catch (e) {
-            // User cancelled or error - ignore
-        }
-    } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
-        const btn = document.getElementById('share-invite-btn');
-        if (btn) {
-            btn.textContent = 'Copied!';
-            setTimeout(() => { btn.textContent = 'Share Invite'; }, 1500);
-        }
+        try { await navigator.share({ title: 'Møbee', text, url }); } catch (e) { /* cancelled */ }
+        return;
+    }
+    try {
+        await copyToClipboard(`${text}\n${url}`, null);
+        flashText(btn, 'Invite link copied');
+    } catch (e) {
+        flashText(document.getElementById('room-code-hint'), url, 4000);
     }
 };
 
@@ -634,44 +652,19 @@ async function copyToClipboard(text, buttonEl, successLabel = "Copied!") {
 }
 
 window.handleCopyRoomCode = async function() {
-    const input = document.getElementById('lobby-room-code');
-    const codeValue = normalizeRoomCode(input ? input.value : roomCode) || roomCode;
-
-    if (input) {
-        input.value = codeValue;
-        input.select();
-        input.setSelectionRange(0, input.value.length); // iOS needs this
-    }
-
+    const hint = document.getElementById('room-code-hint');
     try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(codeValue);
-        } else if (input) {
-            document.execCommand('copy');
-        } else {
-            await copyToClipboard(codeValue, null);
-        }
+        await copyToClipboard(String(roomCode), null);
+        flashText(hint, 'Code copied');
+        document.getElementById('room-code-tiles')?.classList.add('is-copied');
+        setTimeout(() => document.getElementById('room-code-tiles')?.classList.remove('is-copied'), 600);
     } catch (e) {
-        console.error('Failed to copy room code:', e);
+        flashText(hint, 'Copy didn’t work. Read the code out instead', 3000);
     }
 };
 
 window.handleCopyRoomLink = async function() {
-    const lobbyRoomLinkEl = document.getElementById('lobby-room-link');
-    const codeValue = normalizeRoomCode(document.getElementById('lobby-room-code')?.value || roomCode);
-    const url = `${window.location.origin}${window.location.pathname}?room=${codeValue || roomCode}`;
-    try {
-        await copyToClipboard(url, null);
-        // Visual feedback - focus input (shows blue border) and flash background
-        if (lobbyRoomLinkEl) {
-            lobbyRoomLinkEl.focus();
-            lobbyRoomLinkEl.select();
-            lobbyRoomLinkEl.style.backgroundColor = '#e0f0ff';
-            setTimeout(() => lobbyRoomLinkEl.style.backgroundColor = '', 300);
-        }
-    } catch (e) {
-        console.error('Failed to copy room link:', e);
-    }
+    try { await copyToClipboard(ROOM_LINK(), null); } catch (e) { console.error('Failed to copy room link:', e); }
 };
 
 function normalizeRoomCode(rawValue) {
@@ -686,7 +679,13 @@ window.handleJoinRoomCode = function() {
     if (!input) return;
     const code = normalizeRoomCode(input.value);
     if (code.length < 4) {
-        alert('Please enter a valid room code');
+        input.setCustomValidity('Room codes have 6 letters and numbers');
+        input.reportValidity();
+        input.focus();
+        return;
+    }
+    if (code === String(roomCode).toUpperCase()) {
+        flashText(document.querySelector('.room-join-label'), 'That’s this room’s code', 2000);
         return;
     }
     window.location.href = `${window.location.pathname}?room=${code}`;
@@ -706,43 +705,57 @@ window.handleLobbyStart = function() {
     const btn = document.getElementById('lobby-start-btn');
     if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Starting...';
+        btn.textContent = 'Starting…';
     }
     safeSend({ type: "START_GAME" });
 };
 
-function updateLobbyPlayers(scores, avatars) {
+function updateLobbyPlayers(scores, avatars, hostId) {
     if (!lobbyPlayersEl) return;
 
     const playerIds = Object.keys(scores);
 
-    // Determine host (first player alphabetically - simple heuristic)
-    currentHostId = playerIds.sort()[0];
+    // The server decides who hosts (the room creator). Fall back to the first id if the server
+    // is older or its hostId points at someone who already left.
+    currentHostId = (hostId && playerIds.includes(hostId)) ? hostId : playerIds.slice().sort()[0];
     const isHost = playerId === currentHostId;
 
     // Find new players for animation
     const newPlayerIds = playerIds.filter(id => !knownPlayerIds.has(id));
 
-    // Build player avatars - same size, border color indicates current player
-    lobbyPlayersEl.innerHTML = playerIds.map(id => {
+    // Five seats: filled ones show the avatar, the rest are open places in the room
+    const MAX_SEATS = 5;
+    const ordered = [currentHostId, ...playerIds.filter(id => id !== currentHostId)].filter(id => playerIds.includes(id));
+    const seats = [];
+    for (let i = 0; i < MAX_SEATS; i++) {
+        const id = ordered[i];
+        if (!id) { seats.push(`<li class="room-seat is-open"><span class="room-seat-hex"></span><span class="room-seat-label">Open</span></li>`); continue; }
         const isMe = id === playerId;
-        const isNew = newPlayerIds.includes(id) && !isMe; // Don't animate ourselves
-        const avatarHtml = getAvatarHTML(avatars[id], 36, { clickable: isMe, isMe, isNew });
-        return avatarHtml;
-    }).join('');
+        const isNew = newPlayerIds.includes(id) && !isMe;
+        const isHostSeat = id === currentHostId;
+        const label = isMe ? 'You' : (isHostSeat ? 'Host' : 'Player');
+        const avatar = getAvatarHTML(avatars[id], 52, { clickable: isMe, isMe, isNew, away: awayPlayers.has(id) });
+        const hostTag = isHostSeat && isMe ? '<span class="room-seat-tag">host</span>' : '';
+        seats.push(`<li class="room-seat${isMe ? ' is-me' : ''}${isHostSeat ? ' is-host' : ''}${awayPlayers.has(id) ? ' is-away' : ''}${isNew ? ' is-new' : ''}"><span class="room-seat-hex">${avatar}</span>${hostTag}<span class="room-seat-label">${awayPlayers.has(id) ? 'Away' : label}</span></li>`);
+    }
+    lobbyPlayersEl.innerHTML = seats.join('');
+    const countEl = document.getElementById('room-count');
+    if (countEl) countEl.textContent = `${playerIds.length} of ${MAX_SEATS}`;
 
     // Update known players
     playerIds.forEach(id => knownPlayerIds.add(id));
 
     // Show/hide start button based on host status
+    const titleEl = document.getElementById('room-title');
+    if (titleEl) titleEl.textContent = isHost ? 'Your room' : 'You’re in';
     if (isHost) {
         lobbyStartBtn.style.display = 'block';
         lobbyStartBtn.disabled = false;
-        lobbyStartBtn.textContent = 'Start Game';
+        lobbyStartBtn.textContent = playerIds.length > 1 ? `Start game with ${playerIds.length} players` : 'Start game';
         lobbyWaitingEl.style.display = 'none';
     } else {
         lobbyStartBtn.style.display = 'none';
-        lobbyWaitingEl.style.display = 'block';
+        lobbyWaitingEl.style.display = 'grid';
     }
 }
 
@@ -820,34 +833,16 @@ function updateTimerDisplay(seconds) {
     if (timerNumber) {
         timerNumber.textContent = seconds;
     }
+    const ring = scoreEl.querySelector('.hud-ring');
+    if (ring) ring.style.strokeDashoffset = RING_C * (1 - seconds / GAME_DURATION);
+    scoreEl.querySelector('.hud-timer')?.classList.toggle('is-urgent', seconds <= 10);
 }
 
 function endGame() {
     clearInterval(gameTimerInterval);
-
-    // Tell server the game ended (so it can reset gameStartTime)
+    // Tell the server our clock hit zero; it answers every player with GAME_OVER,
+    // which is what actually ends the game on all phones at once.
     safeSend({ type: "END_GAME" });
-
-    // Get current scores to determine winner
-    conn.addEventListener("message", (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (data.type === "UPDATE_SCORES") {
-                showGameOverScreen(data.scores, data.avatars);
-            }
-        } catch (e) {
-            console.error("Failed to parse message:", e, event.data);
-            if (typeof Sentry !== 'undefined') {
-                Sentry.captureException(e, {
-                    tags: { component: 'message-parsing' },
-                    extra: { rawData: event.data }
-                });
-            }
-        }
-    });
-
-    // Request current scores
-    safeSend({ type: "GET_SCORES" });
 }
 
 function showGameOverScreen(scores, avatars) {
@@ -897,7 +892,10 @@ function showGameOverScreen(scores, avatars) {
 
     const startBtn = msgEl.querySelector('button');
     startBtn.innerText = "Play Again";
-    startBtn.style.display = 'block';
+    // Only the host can start the next game; the server ignores START_GAME from anyone else
+    const amHost = isSinglePlayer || !currentHostId || currentHostId === playerId;
+    startBtn.style.display = amHost ? 'block' : 'none';
+    if (!amHost) msgBody.innerHTML += `<div class="friends-waiting" style="margin-top:8px">Waiting for host…</div>`;
     startBtn.onclick = () => {
         // Start a new game immediately
         msgEl.style.display = 'none';
@@ -923,12 +921,15 @@ conn.addEventListener("message", (event) => {
 
     console.log("Server Msg:", data);
 
+    if (Array.isArray(data.away)) awayPlayers = new Set(data.away);
+    if (data.hostId && data.scores && data.scores[data.hostId] !== undefined) currentHostId = data.hostId;
+
     switch (data.type) {
         case "ROOM_FULL":
             // Room is full - show error and disconnect
             alert(data.message || "This room is full (max 5 players). Please try a different room.");
             // Clear the room code so user gets a new one
-            localStorage.removeItem('mobee_room');
+            localStorage.removeItem('mobee_last_room');
             window.location.reload();
             break;
 
@@ -941,7 +942,7 @@ conn.addEventListener("message", (event) => {
             updateScoreboard(data.scores, data.avatars);
             // Update lobby players if still in lobby
             if (!gameStartTime) {
-                updateLobbyPlayers(data.scores, data.avatars);
+                updateLobbyPlayers(data.scores, data.avatars, data.hostId);
             }
             break;
 
@@ -958,6 +959,7 @@ conn.addEventListener("message", (event) => {
             // Hide any modal and start playing immediately
             // (GAME_STARTING already handled the countdown for multiplayer)
             msgEl.style.display = 'none';
+            hideRoundBanner();
             document.body.classList.add("playing");
             renderBoard(data.cards);
 
@@ -997,6 +999,17 @@ conn.addEventListener("message", (event) => {
 
         case "WINNER":
             handleWinner(data);
+            break;
+
+        case "GAME_OVER":
+            // The server's clock decides; clients drift by a second or two after round pauses
+            disarmNextRoundWatchdog();
+            hideRoundBanner();
+            hudPrevScores = {};
+            if (gameTimerInterval) clearInterval(gameTimerInterval);
+            pauseStartTime = null;
+            updateScoreboard(data.scores, data.avatars); // keeps final scores on the board
+            showGameOverScreen(data.scores, data.avatars);
             break;
 
         case "WRONG_GUESS":
@@ -1062,6 +1075,8 @@ conn.addEventListener("message", (event) => {
 // serverCards is: [[symbol1, symbol2, ...], ...]
 // 12-symbol card positions (matching SYMBOL_POSITIONS_12)
 const ROTATIONS_12 = [180, 180, -135, -90, -90, -45, 0, 0, 45, 90, 90, 135];
+// 7-symbol card rotations (centre, then the ring clockwise from the top)
+const ROTATIONS_7 = [0, 180, -120, -60, 0, 60, 120];
 
 // Scale the game board to fit available space
 const BASE_BOARD_SIZE = 600; // Fixed base size in pixels
@@ -1114,57 +1129,67 @@ function renderBoard(serverCards, isSpectator = false) {
         svgBg.innerHTML = `<path class="card-shape" d="M143,12 L240,72 Q255,80 255,95 L255,205 Q255,220 240,228 L143,288 Q130,295 117,288 L20,228 Q5,220 5,205 L5,95 Q5,80 20,72 L117,12 Q130,5 143,12 Z" />`;
         cardEl.appendChild(svgBg);
 
-        // Create 12-symbol container
-        const symbolsContainer = document.createElement('div');
-        symbolsContainer.className = 'card-12-symbols';
-
-        // Add center logo
-        const centerLogo = document.createElement('img');
-        centerLogo.src = 'assets/mobee_logo_sm.png';
-        centerLogo.className = 'center-logo';
-        centerLogo.alt = 'Møbee';
-        centerLogo.draggable = false;
-        symbolsContainer.appendChild(centerLogo);
-
         // Use server order exactly - no client-side shuffling
         // Both players must see identical cards!
         // Server sends opaque per-round tokens, never symbol names; the image is fetched by token too.
-        cardSymbolIds.forEach((token, i) => {
-            const symContainer = document.createElement('img');
-            symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
-            symContainer.src = symbolUrl(token);
-            symContainer.alt = '';
-            symContainer.draggable = false;
-            symContainer.dataset.token = token;
+        const sendGuess = (token) => {
+            if (Date.now() < guessLockedUntil) return;
+            // Add green highlight to all cards
+            document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
+            // Send Guess (server will handle correct/wrong)
+            safeSend({ type: "GUESS", token, cardIndex: cardIndex, sessionToken: sessionToken });
+        };
 
-            // --- CRITICAL: CLICK SENDS GUESS TO SERVER ---
-            // Only enable clicks if NOT in spectator mode
-            if (!isSpectator) {
-                symContainer.onpointerdown = (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
+        if (cardSymbolIds.length <= 7) {
+            // Level 1: 7-symbol layout (centre + hexagon ring), see .pos-0 … .pos-6 in style.css
+            cardSymbolIds.forEach((token, i) => {
+                const symContainer = document.createElement('div');
+                symContainer.className = `symbol-container pos-${i}`;
+                symContainer.dataset.token = token;
+                symContainer.style.transform = `translate(-50%, -50%) rotate(${ROTATIONS_7[i]}deg)`;
+                const img = document.createElement('img');
+                img.className = 'game-symbol';
+                img.src = symbolUrl(token);
+                img.alt = '';
+                img.draggable = false;
+                symContainer.appendChild(img);
+                if (!isSpectator) {
+                    symContainer.onpointerdown = (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        img.style.transform = 'scale(1.5)';
+                        setTimeout(() => img.style.transform = '', 200);
+                        sendGuess(token);
+                    };
+                }
+                cardEl.appendChild(symContainer);
+            });
+        } else {
+            // Level 2: 12-symbol layout (inner and outer rings)
+            const symbolsContainer = document.createElement('div');
+            symbolsContainer.className = 'card-12-symbols';
 
-                    // Visual feedback - use class to preserve rotation
-                    symContainer.classList.add('symbol-clicked');
-                    setTimeout(() => symContainer.classList.remove('symbol-clicked'), 200);
-
-                    // Add green highlight to all cards
-                    document.querySelectorAll('.card').forEach(c => c.classList.add('correct'));
-
-                    // Send Guess (server will handle correct/wrong)
-                    safeSend({
-                        type: "GUESS",
-                        token,
-                        cardIndex: cardIndex,
-                        sessionToken: sessionToken
-                    });
-                };
-            }
-
-            symbolsContainer.appendChild(symContainer);
-        });
-
-        cardEl.appendChild(symbolsContainer);
+            cardSymbolIds.forEach((token, i) => {
+                const symContainer = document.createElement('img');
+                symContainer.className = `symbol-12 ${SYMBOL_POSITIONS_12[i]}`;
+                symContainer.src = symbolUrl(token);
+                symContainer.alt = '';
+                symContainer.draggable = false;
+                symContainer.dataset.token = token;
+                if (!isSpectator) {
+                    symContainer.onpointerdown = (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        // Visual feedback - use class to preserve rotation
+                        symContainer.classList.add('symbol-clicked');
+                        setTimeout(() => symContainer.classList.remove('symbol-clicked'), 200);
+                        sendGuess(token);
+                    };
+                }
+                symbolsContainer.appendChild(symContainer);
+            });
+            cardEl.appendChild(symbolsContainer);
+        }
         boardEl.appendChild(cardEl);
     });
 
@@ -1209,124 +1234,86 @@ function handleWinner(data) {
         return;
     }
 
-    // Multiplayer mode - show winner message WITH countdown
+    // Multiplayer: the winning symbol pulses on every card and the winner's seat flashes;
+    // a small banner over the top of the board names the winner and counts down.
     const isWinner = data.winnerId === playerId;
+    if (!isWinner) cards.forEach(c => c.classList.add('wrong'));
+    scoreEl.querySelector(`.hud-seat[data-player="${data.winnerId}"]`)?.classList.add('is-winner');
+    showRoundBanner(isWinner ? `${winnerAvatar}<span>You got it</span>` : `${winnerAvatar}<span>${data.winnerId === currentHostId ? 'Host' : 'Player'} got it</span>`, isWinner);
+}
 
-    if (isWinner) {
-        // I WON! - cards already have 'correct' class from click
-        msgTitle.innerHTML = `${winnerAvatar} You Won!`;
-        msgEl.classList.remove('lost');
-    } else {
-        // OPPONENT WON - show red border immediately with symbol animation
-        cards.forEach(c => c.classList.add('wrong'));
-        msgTitle.innerHTML = `You lost!`;
-        msgEl.classList.add('lost');
+let roundBannerTimer = null;
+function showRoundBanner(html, good) {
+    let el = document.getElementById('round-banner');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'round-banner';
+        el.setAttribute('role', 'status');
+        const slot = document.createElement('div');
+        slot.id = 'round-banner-slot';
+        slot.appendChild(el);
+        const board = document.getElementById('board-container');
+        board.parentNode.insertBefore(slot, board);
     }
+    clearInterval(roundBannerTimer);
+    let n = 3;
+    const paint = () => { el.innerHTML = `<span class="rb-who">${html}</span><span class="rb-next">Next in <b>${n}</b></span>`; };
+    el.className = good ? 'is-good' : 'is-other';
+    paint();
+    el.hidden = false;
+    roundBannerTimer = setInterval(() => {
+        n--;
+        if (n > 0) { paint(); return; }
+        clearInterval(roundBannerTimer);
+        if (gameStartTime) resumeTimer();
+        el.querySelector('.rb-next').innerHTML = 'Next round';
+    }, 1000);
+}
 
-    // Delay showing modal so players can see the symbol animation
-    setTimeout(() => {
-        // Show overlay with countdown
-        msgEl.style.display = 'block';
-        const startBtn = msgEl.querySelector('button');
-        startBtn.style.display = 'none'; // Hide start button during countdown
-
-        // Start countdown with winner message
-        let countdown = 3;
-        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (countdown > 0) {
-                msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-            } else {
-                clearInterval(countdownInterval);
-                // Resume timer after countdown
-                if (gameStartTime) {
-                    resumeTimer();
-                }
-                // Keep modal visible at same size - NEW_ROUND handler will hide it when cards arrive
-                msgBody.innerHTML = "&nbsp;";
-            }
-        }, 1000);
-    }, 600); // Delay modal to show symbol animation first
+function hideRoundBanner() {
+    clearInterval(roundBannerTimer);
+    const el = document.getElementById('round-banner');
+    if (el) el.hidden = true;
 }
 
 function handleWrongGuess(data) {
     // data.guesserId = playerId who guessed wrong
     // data.scores = updated scores
-
-    // Pause timer FIRST before updating scoreboard
-    pauseTimer();
+    // data.lockoutMs = how long the server ignores the guesser's taps
+    // The round goes on for everyone; only the tapper pays (one point and a short lockout).
 
     updateScoreboard(data.scores, data.avatars);
 
     const cards = document.querySelectorAll('.card');
+    const lockout = data.lockoutMs || 1000;
 
-    // Check if single player mode (only 1 player)
-    const playerCount = Object.keys(data.scores).length;
-    const isSinglePlayer = playerCount === 1;
-
-    // In single player mode, skip all messages and just show brief card animation
-    if (isSinglePlayer) {
-        // Just flash the cards red briefly, no overlay
-        cards.forEach(c => c.classList.add('wrong'));
-        // Arm watchdog in case NEW_ROUND doesn't arrive
-        armNextRoundWatchdog("WRONG_GUESS(single)");
-        // Resume timer immediately
-        setTimeout(() => {
-            if (gameStartTime) resumeTimer();
-        }, 10);
-        return;
-    }
-
-    // Multiplayer mode - show full message
     if (data.guesserId === playerId) {
-        // I guessed wrong!
-        cards.forEach(c => c.classList.add('wrong'));
-        msgTitle.innerText = "You Lost - WRONG!";
-        msgBody.innerText = "Opponent wins the point!";
-        msgEl.classList.add('lost');
+        guessLockedUntil = Date.now() + lockout;
+        cards.forEach(c => { c.classList.remove('correct'); c.classList.add('wrong'); });
+        setTimeout(() => cards.forEach(c => c.classList.remove('wrong')), lockout);
     } else {
-        // Opponent guessed wrong - I win!
-        cards.forEach(c => c.classList.add('correct'));
-        msgTitle.innerText = "You Win!";
-        msgBody.innerText = "Opponent guessed wrong!";
-        msgEl.classList.remove('lost');
+        // Someone else missed: pulse their avatar so the table knows why their score moved
+        const sprite = scoreEl.querySelectorAll('.avatar-sprite')[
+            Object.entries(data.scores).sort((x, y) => y[1] - x[1]).findIndex(([id]) => id === data.guesserId)
+        ];
+        if (sprite) {
+            sprite.classList.add('missed');
+            setTimeout(() => sprite.classList.remove('missed'), 600);
+        }
     }
 
-    // Multiplayer mode - show overlay with countdown
-    msgEl.style.display = 'block';
-    const startBtn = msgEl.querySelector('button');
-    startBtn.style.display = 'none'; // Hide start button during countdown
-
-    // Show message briefly, then start countdown
-    setTimeout(() => {
-        // Countdown from 3
-        let countdown = 3;
-        msgTitle.innerText = "Next Round";
-        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (countdown > 0) {
-                msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-            } else {
-                clearInterval(countdownInterval);
-                // Resume timer after countdown
-                if (gameStartTime) {
-                    resumeTimer();
-                }
-                // Keep modal visible at same size - NEW_ROUND handler will hide it when cards arrive
-                msgBody.innerHTML = "&nbsp;";
-            }
-        }, 1000);
-    }, 1000); // Show message for 1 second first
+    // Only a level drop (single player, score back to 0) replaces the deck and brings a new deal
+    if (data.levelChanged) {
+        pauseTimer();
+        armNextRoundWatchdog("WRONG_GUESS(level down)");
+        setTimeout(() => { if (gameStartTime) resumeTimer(); }, 10);
+    }
 }
 
 // Helper function to create avatar sprite HTML
 function getAvatarHTML(avatarCoords, size = 32, options = {}) {
     if (!avatarCoords) return '';
-    const { clickable = false, isMe = false, isNew = false } = typeof options === 'boolean' ? { clickable: options } : options;
+    const { clickable = false, isMe = false, isNew = false, away = false } = typeof options === 'boolean' ? { clickable: options } : options;
 
     const [col, row] = avatarCoords.split(',').map(Number);
 
@@ -1353,10 +1340,12 @@ function getAvatarHTML(avatarCoords, size = 32, options = {}) {
     const clickStyle = clickable ? 'cursor: pointer;' : '';
     const clickHandler = clickable ? 'onclick="openAvatarModal()"' : '';
     // Add animation class for new players
-    const newPlayerClass = isNew ? ' new-player' : '';
+    const newPlayerClass = (isNew ? ' new-player' : '') + (away ? ' away' : '');
 
     return `<span class="avatar-sprite${newPlayerClass}" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; ${clickStyle}" ${clickHandler}></span>`;
 }
+
+let awayPlayers = new Set(); // players whose socket dropped; the server keeps their seat for a while
 
 function updateScoreboard(scores, avatars = {}) {
     // scores is { "playerId_1": 5, "playerId_2": 3 }
@@ -1378,7 +1367,7 @@ function updateScoreboard(scores, avatars = {}) {
         // Same size for all, border color indicates current player
         const isMe = id === playerId;
         const isClickable = isMe && !gameStartTime; // Only your own avatar is clickable, and only in lobby
-        const avatar = getAvatarHTML(avatars[id], 36, { clickable: isClickable, isMe });
+        const avatar = getAvatarHTML(avatars[id], 36, { clickable: isClickable, isMe, away: awayPlayers.has(id) });
 
         // In lobby (no gameStartTime), only show avatar. During game, show avatar + score
         if (gameStartTime) {
@@ -1390,14 +1379,55 @@ function updateScoreboard(scores, avatars = {}) {
 
     const scoreText = scoreboardParts.join('  ');
 
-    // Add timer if game has started
     if (gameStartTime) {
-        const elapsed = Math.floor((Date.now() - gameStartTime - pausedTime) / 1000);
-        const remaining = Math.max(0, GAME_DURATION - elapsed);
-        scoreEl.innerHTML = `${scoreText}<span class="timer-display"><span style="margin-right: 8px;">Time:</span><span class="timer-number">${remaining}</span>s</span>`;
+        renderGameHud(scores, avatars);
     } else {
+        scoreEl.classList.remove('hud');
         scoreEl.innerHTML = scoreText;
     }
+}
+
+// --- In-game HUD: seats in a fixed order (host first, then by arrival), score under each,
+// a leader mark, and a ring timer on the right. Seats never reorder mid-game.
+let hudPrevScores = {};
+const RING_R = 22, RING_C = 2 * Math.PI * RING_R;
+
+function hudRemaining() {
+    const elapsed = Math.floor((Date.now() - gameStartTime - pausedTime) / 1000);
+    return Math.max(0, GAME_DURATION - elapsed);
+}
+
+function renderGameHud(scores, avatars) {
+    const ids = Object.keys(scores);
+    const order = [currentHostId, ...ids.filter(id => id !== currentHostId)].filter(id => id && ids.includes(id));
+    const top = Math.max(...order.map(id => scores[id]));
+    const leaders = order.filter(id => scores[id] === top);
+    const leaderId = top > 0 && leaders.length === 1 ? leaders[0] : null;
+    const solo = order.length === 1;
+
+    const seats = order.map(id => {
+        const isMe = id === playerId;
+        const prev = hudPrevScores[id];
+        const delta = prev === undefined ? 0 : scores[id] - prev;
+        const cls = ['hud-seat', isMe && 'is-me', id === leaderId && 'is-leader', awayPlayers.has(id) && 'is-away',
+                     delta > 0 && 'did-score', delta < 0 && 'did-miss'].filter(Boolean).join(' ');
+        const bump = delta ? `<span class="hud-delta">${delta > 0 ? '+' : '−'}${Math.abs(delta)}</span>` : '';
+        const label = solo ? 'Score' : (isMe ? 'You' : (id === currentHostId ? 'Host' : 'Player'));
+        return `<div class="${cls}" data-player="${id}">
+            <span class="hud-hex">${getAvatarHTML(avatars[id], 34, { isMe })}</span>
+            <span class="hud-score">${scores[id]}${bump}</span>
+            <span class="hud-label">${label}</span>
+        </div>`;
+    }).join('');
+
+    const remaining = hudRemaining();
+    scoreEl.classList.add('hud');
+    scoreEl.innerHTML = `<div class="hud-seats">${seats}</div>
+        <div class="hud-timer${remaining <= 10 ? ' is-urgent' : ''}" role="timer" aria-label="Seconds left">
+            <svg viewBox="0 0 52 52" aria-hidden="true"><circle class="hud-ring-bg" cx="26" cy="26" r="${RING_R}"/><circle class="hud-ring" cx="26" cy="26" r="${RING_R}" stroke-dasharray="${RING_C}" stroke-dashoffset="${RING_C * (1 - remaining / GAME_DURATION)}"/></svg>
+            <span class="timer-number">${remaining}</span>
+        </div>`;
+    hudPrevScores = { ...scores };
 }
 
 } // End setupConnectionHandlers
@@ -1498,7 +1528,32 @@ window.joinRoomFromInvite = function() {
 }
 
 // Copy invite link to clipboard when clicked
+// Lobby wiring. The inline onclick attributes were dropped in v1.5.131; attach the handlers here.
+function wireLobby() {
+    const on = (id, fn, stop = false) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('click', (e) => { if (stop) e.stopPropagation(); fn(e); });
+    };
+    on('play-solo-card', () => window.handlePlaySolo());
+    on('shop-card', () => window.openShopModal());
+    on('play-friends-card', () => window.handlePlayFriends());
+    on('room-code-copy-btn', () => window.handleCopyRoomCode(), true);
+    on('send-invite-btn', () => window.handleShareInvite(), true);
+    on('lobby-start-btn', () => window.handleLobbyStart(), true);
+    on('room-back-btn', () => { window.location.href = `${window.location.pathname}?lobby`; });
+    const joinForm = document.getElementById('room-join-form');
+    if (joinForm) joinForm.addEventListener('submit', (e) => { e.preventDefault(); window.handleJoinRoomCode(); });
+    const joinInput = document.getElementById('lobby-room-code');
+    if (joinInput) joinInput.addEventListener('input', () => {
+        joinInput.setCustomValidity('');
+        joinInput.value = joinInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    wireLobby();
+
     // Display version
     console.log('Møbee Multi v' + VERSION);
     const versionDisplay = document.getElementById('version-display');
@@ -1584,12 +1639,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         // Don't copy on click - only copy via the copy icon
         // This allows users to paste a new room code without losing their clipboard
-        lobbyCodeInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                window.handleJoinRoomCode();
-            }
-        });
         // Auto-submit when 6 characters are entered (paste or typing)
         lobbyCodeInput.addEventListener('input', () => {
             const code = lobbyCodeInput.value.trim().toUpperCase();
