@@ -20,6 +20,8 @@ const MAX_PLAYERS = 5;            // Maximum players per room
 const GAME_DURATION_MS = 60000;   // 60 second game duration
 const COUNTDOWN_DURATION_MS = 3000; // 3 second countdown before game starts
 const GUESS_RATE_LIMIT_MS = 150;  // Minimum ms between guesses
+const MISS_LOCKOUT_MS = 1000;     // A wrong tap locks that player out for this long; the round continues
+const RECONNECT_GRACE_MS = 20000; // A dropped socket keeps its seat and score for this long
 const SINGLE_PLAYER_DELAY = 300;  // Delay between rounds (single player)
 const MULTI_PLAYER_DELAY = 4000;  // Delay between rounds (multiplayer)
 
@@ -60,6 +62,7 @@ function createPayload(type, state, extra = {}) {
     playerLevels: state.playerLevels,
     avatars: state.avatars,
     hostId: state.hostId,
+    away: Object.keys(state.away || {}),
     ...extra
   });
 }
@@ -101,6 +104,7 @@ export default class MobeeServer {
       gameStartTime: null,
       gameEndsAt: null,
       countdownStartAt: null,
+      away: {},          // playerId → ms timestamp of disconnect, while inside the reconnect grace
       hostId
     };
   }
@@ -113,6 +117,7 @@ export default class MobeeServer {
     state.playerLevels = state.playerLevels || {};
     state.qualifiedForLevel = state.qualifiedForLevel || {};
     state.currentLevel = state.currentLevel || 1;
+    state.away = state.away || {};
 
     if (!state.hostId) {
       const existingPlayers = Object.keys(state.scores);
@@ -204,6 +209,7 @@ export default class MobeeServer {
     state.currentDeckIndices = indices;
     state.currentAnswer = answer;
     state.currentShuffledCards = cards;
+    state.currentTokenCards = tokenCards; // what late joiners and returning players get
     state.roundTokens = tokens;
     state.status = "playing";
 
@@ -401,16 +407,23 @@ export default class MobeeServer {
       .map(c => c.playerId)
       .filter(Boolean);
 
+    // A player with no socket is a zombie unless they dropped within the grace window
+    const now = Date.now();
     const zombies = Object.keys(state.scores)
-      .filter(id => !activeIds.includes(id) && id !== playerId);
+      .filter(id => !activeIds.includes(id) && id !== playerId)
+      .filter(id => !(state.away[id] && now - state.away[id] < RECONNECT_GRACE_MS));
 
     if (zombies.length > 0) {
       console.log("Cleaning zombies:", zombies);
-      zombies.forEach(id => {
-        delete state.scores[id];
-        delete state.avatars[id];
-        delete state.playerLevels[id];
-      });
+      zombies.forEach(id => this.removePlayer(state, id));
+      await this.party.storage.put("gamestate", state);
+    }
+
+    // Returning within the grace window: keep seat and score
+    if (state.away[playerId]) {
+      console.log(`Player ${playerId} is back`);
+      delete state.away[playerId];
+      this.party.broadcast(createPayload("UPDATE_SCORES", state));
       await this.party.storage.put("gamestate", state);
     }
 
@@ -470,10 +483,10 @@ export default class MobeeServer {
 
     if (state.status === "countdown") {
       conn.send(createPayload("GAME_STARTING", state, { countdown: 3 }));
-    } else if (state.status === "playing" && state.currentShuffledCards) {
-      // Player joining mid-game can immediately play
+    } else if (state.status === "playing" && state.currentTokenCards) {
+      // Player joining mid-game can immediately play (tokens, never symbol names)
       conn.send(createPayload("NEW_ROUND", state, {
-        cards: state.currentShuffledCards,
+        cards: state.currentTokenCards,
         level: state.currentLevel,
         gameStartTime: state.gameStartTime
       }));
@@ -500,28 +513,46 @@ export default class MobeeServer {
       return;
     }
 
-    // Remove player
+    // Keep the seat for a while: iOS drops the socket whenever the screen locks
+    const droppedAt = Date.now();
+    state.away[playerId] = droppedAt;
+    console.log(`Player ${playerId} away, grace ${RECONNECT_GRACE_MS}ms`);
+    this.party.broadcast(createPayload("UPDATE_SCORES", state));
+    await this.party.storage.put("gamestate", state);
+
+    setTimeout(() => {
+      this._queue = this._queue.then(async () => {
+        const current = await this.party.storage.get("gamestate");
+        if (!current || current.away?.[playerId] !== droppedAt) return; // came back, or a newer drop
+        const stillGone = ![...this.party.getConnections()].some(c => c.playerId === playerId);
+        if (!stillGone) { delete current.away[playerId]; }
+        else {
+          console.log(`Grace over, removing ${playerId}`);
+          this.removePlayer(current, playerId);
+          if (Object.keys(current.scores).length === 0 && current.status === "countdown") {
+            current.status = "waiting";
+            current.countdownStartAt = null;
+          }
+        }
+        this.party.broadcast(createPayload("UPDATE_SCORES", current));
+        await this.party.storage.put("gamestate", current);
+      }).catch(console.error);
+    }, RECONNECT_GRACE_MS);
+  }
+
+  /**
+   * Drop a player from the room; hands the host role on if needed
+   */
+  removePlayer(state, playerId) {
     delete state.scores[playerId];
     delete state.avatars[playerId];
     delete state.playerLevels[playerId];
-
-    const remaining = Object.keys(state.scores).length;
-    console.log(`Removed player. Remaining: ${remaining}`);
-
-    // Transfer host if needed
-    if (state.hostId === playerId && remaining > 0) {
-      state.hostId = Object.keys(state.scores).sort()[0];
+    delete state.away[playerId];
+    const remaining = Object.keys(state.scores);
+    if (state.hostId === playerId && remaining.length > 0) {
+      state.hostId = remaining.sort()[0];
       console.log(`Host transferred to: ${state.hostId}`);
     }
-
-    // Cancel countdown if no players
-    if (remaining === 0 && state.status === "countdown") {
-      state.status = "waiting";
-      state.countdownStartAt = null;
-    }
-
-    this.party.broadcast(createPayload("UPDATE_SCORES", state));
-    await this.party.storage.put("gamestate", state);
   }
 
   // ---------------------------------------------------------------------------
@@ -551,6 +582,11 @@ export default class MobeeServer {
 
     switch (data.type) {
       case "START_GAME":
+        // Between games only the host starts; mid-game anyone may nudge the next round (watchdog)
+        if (isMultiplayer && state.status === "waiting" && !state.gameStartTime && sender.playerId !== state.hostId) {
+          console.log("START_GAME ignored, not host:", sender.playerId);
+          break;
+        }
         await this.handleStartGame(state, data, isMultiplayer);
         break;
 
@@ -668,6 +704,11 @@ export default class MobeeServer {
     }
     sender.lastGuessTime = now;
 
+    if (sender.lockedUntil && now < sender.lockedUntil) {
+      console.log("Locked out after a miss:", sender.playerId);
+      return;
+    }
+
     // Check if game expired
     if (state.gameEndsAt && now > state.gameEndsAt) {
       console.log("Guess after game ended");
@@ -682,9 +723,8 @@ export default class MobeeServer {
 
     console.log(`${guesser} guessed ${guessedSymbol} (${data.token}) | Answer: ${state.currentAnswer} | ${isCorrect ? 'CORRECT' : 'WRONG'}`);
 
-    state.status = "waiting";
-
     if (isCorrect) {
+      state.status = "waiting";
       // Update score
       const newScore = (state.scores[guesser] || 0) + 1;
       state.scores[guesser] = newScore;
@@ -727,11 +767,22 @@ export default class MobeeServer {
         }
       }
 
+      // A miss costs only the tapper: a short lockout, and the round goes on for everyone
+      sender.lockedUntil = now + MISS_LOCKOUT_MS;
+
       this.party.broadcast(createPayload("WRONG_GUESS", state, {
         guesserId: guesser,
+        lockoutMs: MISS_LOCKOUT_MS,
         levelChanged,
         newLevel: levelChanged ? newLevel : undefined
       }));
+
+      if (!levelChanged) {
+        await this.party.storage.put("gamestate", state);
+        return;
+      }
+      // Level dropped: the deck changed, so deal a fresh round
+      state.status = "waiting";
     }
 
     // Extend game time to account for pause

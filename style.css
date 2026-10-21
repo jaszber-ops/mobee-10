@@ -1187,3 +1187,8 @@ img.lobby-card-icon {
     left: 28.5%;
     transform: translate(-50%, -50%) rotate(135deg);
 }
+
+/* Reconnect grace: a player whose socket dropped keeps their seat, shown dimmed */
+.avatar-sprite.away { opacity: 0.35; filter: grayscale(1); }
+/* Someone else tapped wrong */
+.avatar-sprite.missed { animation: shake 0.4s; filter: drop-shadow(0 0 6px var(--error)); }

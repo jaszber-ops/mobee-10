@@ -428,6 +428,7 @@ function disarmNextRoundWatchdog() {
 
 // --- Lobby Functions ---
 let isMultiplayerMode = false;
+let guessLockedUntil = 0; // after a miss the server ignores our taps for a moment; mirror that here
 let currentHostId = null;
 let knownPlayerIds = new Set(); // Track players we've seen to animate new ones
 
@@ -607,7 +608,7 @@ window.handleShareInvite = async function() {
         }
     } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(`${text}\n${url}`);
-        const btn = document.getElementById('share-invite-btn');
+        const btn = document.getElementById('send-invite-btn');
         if (btn) {
             btn.textContent = 'Copied!';
             setTimeout(() => { btn.textContent = 'Share Invite'; }, 1500);
@@ -711,13 +712,13 @@ window.handleLobbyStart = function() {
     safeSend({ type: "START_GAME" });
 };
 
-function updateLobbyPlayers(scores, avatars) {
+function updateLobbyPlayers(scores, avatars, hostId) {
     if (!lobbyPlayersEl) return;
 
     const playerIds = Object.keys(scores);
 
-    // Determine host (first player alphabetically - simple heuristic)
-    currentHostId = playerIds.sort()[0];
+    // The server decides who hosts (the room creator); fall back to the old heuristic for old servers
+    currentHostId = hostId || playerIds.slice().sort()[0];
     const isHost = playerId === currentHostId;
 
     // Find new players for animation
@@ -727,7 +728,7 @@ function updateLobbyPlayers(scores, avatars) {
     lobbyPlayersEl.innerHTML = playerIds.map(id => {
         const isMe = id === playerId;
         const isNew = newPlayerIds.includes(id) && !isMe; // Don't animate ourselves
-        const avatarHtml = getAvatarHTML(avatars[id], 36, { clickable: isMe, isMe, isNew });
+        const avatarHtml = getAvatarHTML(avatars[id], 36, { clickable: isMe, isMe, isNew, away: awayPlayers.has(id) });
         return avatarHtml;
     }).join('');
 
@@ -923,12 +924,14 @@ conn.addEventListener("message", (event) => {
 
     console.log("Server Msg:", data);
 
+    if (Array.isArray(data.away)) awayPlayers = new Set(data.away);
+
     switch (data.type) {
         case "ROOM_FULL":
             // Room is full - show error and disconnect
             alert(data.message || "This room is full (max 5 players). Please try a different room.");
             // Clear the room code so user gets a new one
-            localStorage.removeItem('mobee_room');
+            localStorage.removeItem('mobee_last_room');
             window.location.reload();
             break;
 
@@ -941,7 +944,7 @@ conn.addEventListener("message", (event) => {
             updateScoreboard(data.scores, data.avatars);
             // Update lobby players if still in lobby
             if (!gameStartTime) {
-                updateLobbyPlayers(data.scores, data.avatars);
+                updateLobbyPlayers(data.scores, data.avatars, data.hostId);
             }
             break;
 
@@ -1143,6 +1146,7 @@ function renderBoard(serverCards, isSpectator = false) {
                 symContainer.onpointerdown = (e) => {
                     e.stopPropagation();
                     e.preventDefault();
+                    if (Date.now() < guessLockedUntil) return;
 
                     // Visual feedback - use class to preserve rotation
                     symContainer.classList.add('symbol-clicked');
@@ -1254,79 +1258,41 @@ function handleWinner(data) {
 function handleWrongGuess(data) {
     // data.guesserId = playerId who guessed wrong
     // data.scores = updated scores
-
-    // Pause timer FIRST before updating scoreboard
-    pauseTimer();
+    // data.lockoutMs = how long the server ignores the guesser's taps
+    // The round goes on for everyone; only the tapper pays (one point and a short lockout).
 
     updateScoreboard(data.scores, data.avatars);
 
     const cards = document.querySelectorAll('.card');
+    const lockout = data.lockoutMs || 1000;
 
-    // Check if single player mode (only 1 player)
-    const playerCount = Object.keys(data.scores).length;
-    const isSinglePlayer = playerCount === 1;
-
-    // In single player mode, skip all messages and just show brief card animation
-    if (isSinglePlayer) {
-        // Just flash the cards red briefly, no overlay
-        cards.forEach(c => c.classList.add('wrong'));
-        // Arm watchdog in case NEW_ROUND doesn't arrive
-        armNextRoundWatchdog("WRONG_GUESS(single)");
-        // Resume timer immediately
-        setTimeout(() => {
-            if (gameStartTime) resumeTimer();
-        }, 10);
-        return;
-    }
-
-    // Multiplayer mode - show full message
     if (data.guesserId === playerId) {
-        // I guessed wrong!
-        cards.forEach(c => c.classList.add('wrong'));
-        msgTitle.innerText = "You Lost - WRONG!";
-        msgBody.innerText = "Opponent wins the point!";
-        msgEl.classList.add('lost');
+        guessLockedUntil = Date.now() + lockout;
+        cards.forEach(c => { c.classList.remove('correct'); c.classList.add('wrong'); });
+        setTimeout(() => cards.forEach(c => c.classList.remove('wrong')), lockout);
     } else {
-        // Opponent guessed wrong - I win!
-        cards.forEach(c => c.classList.add('correct'));
-        msgTitle.innerText = "You Win!";
-        msgBody.innerText = "Opponent guessed wrong!";
-        msgEl.classList.remove('lost');
+        // Someone else missed: pulse their avatar so the table knows why their score moved
+        const sprite = scoreEl.querySelectorAll('.avatar-sprite')[
+            Object.entries(data.scores).sort((x, y) => y[1] - x[1]).findIndex(([id]) => id === data.guesserId)
+        ];
+        if (sprite) {
+            sprite.classList.add('missed');
+            setTimeout(() => sprite.classList.remove('missed'), 600);
+        }
     }
 
-    // Multiplayer mode - show overlay with countdown
-    msgEl.style.display = 'block';
-    const startBtn = msgEl.querySelector('button');
-    startBtn.style.display = 'none'; // Hide start button during countdown
-
-    // Show message briefly, then start countdown
-    setTimeout(() => {
-        // Countdown from 3
-        let countdown = 3;
-        msgTitle.innerText = "Next Round";
-        msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (countdown > 0) {
-                msgBody.innerHTML = `<div class="countdown-number">${countdown}</div>`;
-            } else {
-                clearInterval(countdownInterval);
-                // Resume timer after countdown
-                if (gameStartTime) {
-                    resumeTimer();
-                }
-                // Keep modal visible at same size - NEW_ROUND handler will hide it when cards arrive
-                msgBody.innerHTML = "&nbsp;";
-            }
-        }, 1000);
-    }, 1000); // Show message for 1 second first
+    // Only a level drop (single player, score back to 0) replaces the deck and brings a new deal
+    if (data.levelChanged) {
+        pauseTimer();
+        armNextRoundWatchdog("WRONG_GUESS(level down)");
+        setTimeout(() => { if (gameStartTime) resumeTimer(); }, 10);
+    }
 }
 
 // Helper function to create avatar sprite HTML
 function getAvatarHTML(avatarCoords, size = 32, options = {}) {
     if (!avatarCoords) return '';
-    const { clickable = false, isMe = false, isNew = false } = typeof options === 'boolean' ? { clickable: options } : options;
+    const { clickable = false, isMe = false, isNew = false, away = false } = typeof options === 'boolean' ? { clickable: options } : options;
 
     const [col, row] = avatarCoords.split(',').map(Number);
 
@@ -1353,10 +1319,12 @@ function getAvatarHTML(avatarCoords, size = 32, options = {}) {
     const clickStyle = clickable ? 'cursor: pointer;' : '';
     const clickHandler = clickable ? 'onclick="openAvatarModal()"' : '';
     // Add animation class for new players
-    const newPlayerClass = isNew ? ' new-player' : '';
+    const newPlayerClass = (isNew ? ' new-player' : '') + (away ? ' away' : '');
 
     return `<span class="avatar-sprite${newPlayerClass}" style="width: ${size}px; height: ${size}px; background-size: ${bgWidth}px ${bgHeight}px; background-position: ${bgX}px ${bgY}px; vertical-align: middle; margin-right: 4px; ${clickStyle}" ${clickHandler}></span>`;
 }
+
+let awayPlayers = new Set(); // players whose socket dropped; the server keeps their seat for a while
 
 function updateScoreboard(scores, avatars = {}) {
     // scores is { "playerId_1": 5, "playerId_2": 3 }
@@ -1378,7 +1346,7 @@ function updateScoreboard(scores, avatars = {}) {
         // Same size for all, border color indicates current player
         const isMe = id === playerId;
         const isClickable = isMe && !gameStartTime; // Only your own avatar is clickable, and only in lobby
-        const avatar = getAvatarHTML(avatars[id], 36, { clickable: isClickable, isMe });
+        const avatar = getAvatarHTML(avatars[id], 36, { clickable: isClickable, isMe, away: awayPlayers.has(id) });
 
         // In lobby (no gameStartTime), only show avatar. During game, show avatar + score
         if (gameStartTime) {
@@ -1498,7 +1466,29 @@ window.joinRoomFromInvite = function() {
 }
 
 // Copy invite link to clipboard when clicked
+// Lobby wiring. The inline onclick attributes were dropped in v1.5.131; attach the handlers here.
+function wireLobby() {
+    const on = (id, fn, stop = false) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('click', (e) => { if (stop) e.stopPropagation(); fn(e); });
+    };
+    on('play-solo-card', () => window.handlePlaySolo());
+    on('shop-card', () => window.openShopModal());
+    on('play-friends-card', () => window.handlePlayFriends());
+    on('room-code-card', () => window.handleRoomCodeCardClick());
+    on('lobby-room-code', () => {}, true);
+    on('room-code-copy-btn', () => window.handleCopyRoomCode(), true);
+    on('room-link-card', () => window.handleShareInvite());
+    on('lobby-room-link', () => {}, true);
+    on('room-link-copy-btn', () => window.handleCopyRoomLink(), true);
+    on('send-invite-btn', () => window.handleShareInvite(), true);
+    on('lobby-start-btn', () => window.handleLobbyStart(), true);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    wireLobby();
+
     // Display version
     console.log('Møbee Multi v' + VERSION);
     const versionDisplay = document.getElementById('version-display');
